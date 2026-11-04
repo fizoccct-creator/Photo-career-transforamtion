@@ -1,0 +1,42 @@
+[
+  {
+    "id": "pilot",
+    "title": "Pilot",
+    "emoji": "✈️",
+    "color": "#2563eb",
+    "tagline": "Take command of the skies",
+    "prompt": "an airline captain wearing a crisp navy pilot uniform with gold captain stripes on the shoulders, pilot wings badge and a captain's hat, standing in front of a commercial airliner cockpit with the sky visible through the windows"
+  },
+  {
+    "id": "doctor",
+    "title": "Doctor",
+    "emoji": "🩺",
+    "color": "#059669",
+    "tagline": "Heal and save lives",
+    "prompt": "a medical doctor wearing a clean white lab coat over scrubs with a stethoscope around the neck and a hospital ID badge, standing in a bright modern hospital corridor"
+  },
+  {
+    "id": "photographer",
+    "title": "Photographer",
+    "emoji": "📷",
+    "color": "#d97706",
+    "tagline": "Capture the perfect moment",
+    "prompt": "a professional photographer holding a full-frame DSLR camera with a large lens, wearing a stylish casual outfit with a camera strap, in a photo studio with softbox lights and a backdrop"
+  },
+  {
+    "id": "videographer",
+    "title": "Videographer",
+    "emoji": "🎥",
+    "color": "#dc2626",
+    "tagline": "Tell stories in motion",
+    "prompt": "a professional videographer operating a cinema camera on a shoulder rig, wearing headphones around the neck and practical dark clothing, on a film set with lighting rigs and a clapperboard"
+  },
+  {
+    "id": "graphic-designer",
+    "title": "Graphic Designer",
+    "emoji": "🎨",
+    "color": "#9333ea",
+    "tagline": "Design the world's look",
+    "prompt": "a creative graphic designer in trendy smart-casual clothes holding a digital drawing tablet and stylus, in a colorful modern design studio with large monitors showing design work and mood boards on the wall"
+  }
+]

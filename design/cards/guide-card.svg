@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="1000" viewBox="0 0 750 1000">
+<rect width="750" height="1000" rx="67.5" fill="#202959"/>
+<rect x="50" y="50" width="650" height="900" rx="30" fill="none" stroke="#FDD00D" stroke-width="4" stroke-dasharray="16 10"/>
+<text x="70" y="100" font-family="Segoe UI, Arial" font-size="28" font-weight="700" fill="#FDD00D">SAFE AREA: keep text and icons inside</text>
+<text x="70" y="890" font-family="Segoe UI, Arial" font-size="30" font-weight="700" fill="#FFFFFF">Card: 750 × 1000 px (3:4)</text>
+<text x="70" y="930" font-family="Segoe UI, Arial" font-size="24" font-weight="700" fill="#FFFFFF">Corners are rounded by the app</text>
+</svg>

@@ -1,0 +1,39 @@
+{
+  "brandName": "Career Transformation",
+
+  "colors": {
+    "primary": "#FDD00D",
+    "secondary": "#202959",
+    "light": "#FFFFFF",
+    "dark": "#000000"
+  },
+  "font": "\"Segoe UI\", system-ui, -apple-system, sans-serif",
+
+  "frames": {
+    "portrait": {
+      "width": 1080,
+      "height": 1920,
+      "photo": { "x": 60, "y": 180, "w": 960, "h": 1360, "radius": 28, "borderColor": "primary", "borderWidth": 10 },
+      "logo": { "x": 290, "y": 35, "w": 500, "h": 120 },
+      "texts": [
+        { "text": "{brand}", "x": 540, "y": 100, "size": 52, "weight": 800, "color": "primary", "onlyWithoutLogo": true },
+        { "text": "FUTURE", "x": 540, "y": 1655, "size": 56, "weight": 700, "color": "secondary" },
+        { "text": "{CAREER}", "x": 540, "y": 1750, "size": 110, "weight": 900, "color": "secondary", "maxWidth": 980 },
+        { "text": "{date}", "x": 540, "y": 1855, "size": 34, "weight": 600, "color": "secondary" }
+      ]
+    },
+    "landscape": {
+      "width": 1920,
+      "height": 1080,
+      "photo": { "x": 60, "y": 60, "w": 1200, "h": 960, "radius": 28, "borderColor": "primary", "borderWidth": 10 },
+      "logo": { "x": 1400, "y": 70, "w": 440, "h": 150 },
+      "texts": [
+        { "text": "{brand}", "x": 1620, "y": 150, "size": 46, "weight": 800, "color": "secondary", "onlyWithoutLogo": true, "maxWidth": 540 },
+        { "text": "{emoji}", "x": 1620, "y": 360, "size": 150 },
+        { "text": "FUTURE", "x": 1620, "y": 520, "size": 60, "weight": 700, "color": "secondary" },
+        { "text": "{CAREER}", "x": 1620, "y": 615, "size": 92, "weight": 900, "color": "secondary", "maxWidth": 540, "wrap": true },
+        { "text": "{date}", "x": 1620, "y": 985, "size": 32, "weight": 600, "color": "secondary" }
+      ]
+    }
+  }
+}

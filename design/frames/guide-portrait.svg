@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+<rect width="100%" height="100%" fill="#f4f4f4"/>
+<rect x="60" y="180" width="960" height="1360" rx="28" fill="#ffd6f3" stroke="#e000a0" stroke-width="4" stroke-dasharray="18 10"/>
+<text x="84" y="230" font-family="Segoe UI, Arial" font-size="30" font-weight="700" fill="#e000a0">PHOTO AREA: keep this transparent in your frame PNG</text>
+<text x="84" y="270" font-family="Segoe UI, Arial" font-size="26" font-weight="700" fill="#e000a0">960 × 1360 px at x 60, y 180</text>
+<rect x="290" y="35" width="500" height="120" fill="none" stroke="#0090c0" stroke-width="4" stroke-dasharray="14 8"/>
+<text x="298" y="185" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#0090c0">LOGO 500 × 120</text>
+<line x1="516" y1="100" x2="564" y2="100" stroke="#1a9e00" stroke-width="3"/><line x1="540" y1="76" x2="540" y2="124" stroke="#1a9e00" stroke-width="3"/><text x="570" y="109" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: brand</text>
+<line x1="516" y1="1655" x2="564" y2="1655" stroke="#1a9e00" stroke-width="3"/><line x1="540" y1="1631" x2="540" y2="1679" stroke="#1a9e00" stroke-width="3"/><text x="570" y="1664" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: FUTURE</text>
+<line x1="516" y1="1750" x2="564" y2="1750" stroke="#1a9e00" stroke-width="3"/><line x1="540" y1="1726" x2="540" y2="1774" stroke="#1a9e00" stroke-width="3"/><text x="570" y="1759" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: CAREER</text>
+<line x1="516" y1="1855" x2="564" y2="1855" stroke="#1a9e00" stroke-width="3"/><line x1="540" y1="1831" x2="540" y2="1879" stroke="#1a9e00" stroke-width="3"/><text x="570" y="1864" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: date</text>
+<text x="20" y="1896" font-family="Segoe UI, Arial" font-size="26" font-weight="700" fill="#555">CANVAS 1080 × 1920 px · vertical frame</text>
+</svg>

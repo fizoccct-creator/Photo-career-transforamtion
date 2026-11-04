@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<rect width="100%" height="100%" fill="#f4f4f4"/>
+<rect x="60" y="60" width="1200" height="960" rx="28" fill="#ffd6f3" stroke="#e000a0" stroke-width="4" stroke-dasharray="18 10"/>
+<text x="84" y="110" font-family="Segoe UI, Arial" font-size="30" font-weight="700" fill="#e000a0">PHOTO AREA: keep this transparent in your frame PNG</text>
+<text x="84" y="150" font-family="Segoe UI, Arial" font-size="26" font-weight="700" fill="#e000a0">1200 × 960 px at x 60, y 60</text>
+<rect x="1400" y="70" width="440" height="150" fill="none" stroke="#0090c0" stroke-width="4" stroke-dasharray="14 8"/>
+<text x="1408" y="250" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#0090c0">LOGO 440 × 150</text>
+<line x1="1596" y1="150" x2="1644" y2="150" stroke="#1a9e00" stroke-width="3"/><line x1="1620" y1="126" x2="1620" y2="174" stroke="#1a9e00" stroke-width="3"/><text x="1650" y="159" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: brand</text>
+<line x1="1596" y1="360" x2="1644" y2="360" stroke="#1a9e00" stroke-width="3"/><line x1="1620" y1="336" x2="1620" y2="384" stroke="#1a9e00" stroke-width="3"/><text x="1650" y="369" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: emoji</text>
+<line x1="1596" y1="520" x2="1644" y2="520" stroke="#1a9e00" stroke-width="3"/><line x1="1620" y1="496" x2="1620" y2="544" stroke="#1a9e00" stroke-width="3"/><text x="1650" y="529" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: FUTURE</text>
+<line x1="1596" y1="615" x2="1644" y2="615" stroke="#1a9e00" stroke-width="3"/><line x1="1620" y1="591" x2="1620" y2="639" stroke="#1a9e00" stroke-width="3"/><text x="1650" y="624" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: CAREER</text>
+<line x1="1596" y1="985" x2="1644" y2="985" stroke="#1a9e00" stroke-width="3"/><line x1="1620" y1="961" x2="1620" y2="1009" stroke="#1a9e00" stroke-width="3"/><text x="1650" y="994" font-family="Segoe UI, Arial" font-size="22" font-weight="700" fill="#1a9e00">text: date</text>
+<text x="20" y="1056" font-family="Segoe UI, Arial" font-size="26" font-weight="700" fill="#555">CANVAS 1920 × 1080 px · horizontal frame</text>
+</svg>

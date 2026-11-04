@@ -1,0 +1,18 @@
+{
+  "name": "career-transformation",
+  "version": "1.0.0",
+  "description": "Pick an occupation card, take a selfie, and let AI transform you into that career.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "models": "node list-models.js",
+    "guides": "node make-guides.js"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
+}
