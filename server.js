@@ -85,7 +85,120 @@ async function transformDemo(imageB64, mime) {
   return { b64: imageB64, mime };
 }
 
-const providers = { gemini: transformWithGemini, openai: transformWithOpenAI, demo: transformDemo };
+// ComfyUI on your own GPU PC. Uses a workflow saved with "Export (API)" in ComfyUI.
+// Before sending it, the server fills in:
+//   - "{{PROMPT}}" anywhere in the workflow → the career prompt (type it in your positive prompt box)
+//   - the first LoadImage node (or one titled "selfie") → the uploaded selfie
+//   - width/height of ImageScale / EmptyLatentImage nodes → the photo shape (portrait or landscape)
+//   - seed / noise_seed of sampler nodes → a new random number, so every photo differs
+const COMFY_SIZES = { landscape: [1152, 896], portrait: [896, 1152] }; // 4:3 and 3:4, about 1 megapixel for SDXL
+
+async function comfyFetch(base, urlPath, opts) {
+  let res;
+  try {
+    res = await fetch(base + urlPath, { ...opts, signal: AbortSignal.timeout(30000) });
+  } catch (err) {
+    throw new Error(`Cannot reach ComfyUI at ${base}. Is it running with --listen, and is COMFYUI_URL right? (${err.cause?.code || err.message})`);
+  }
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const j = await res.json();
+      detail = j.error?.message || '';
+      const nodeErr = Object.values(j.node_errors || {})[0];
+      if (nodeErr) detail += ` ${nodeErr.class_type}: ${nodeErr.errors?.[0]?.message || ''} ${nodeErr.errors?.[0]?.details || ''}`;
+    } catch { /* not JSON */ }
+    throw new Error(`ComfyUI error ${res.status}${detail ? `: ${detail.trim()}` : ''}`);
+  }
+  return res;
+}
+
+function prepareComfyWorkflow(workflow, { prompt, imageName, orientation }) {
+  const [width, height] = COMFY_SIZES[orientation];
+  let json = JSON.stringify(workflow);
+  if (!json.includes('{{PROMPT}}')) {
+    throw new Error('The ComfyUI workflow has no {{PROMPT}}. Type {{PROMPT}} in your positive prompt box, then export it again.');
+  }
+  json = json.replaceAll('{{PROMPT}}', JSON.stringify(prompt).slice(1, -1));
+  const wf = JSON.parse(json);
+  const nodes = Object.values(wf);
+
+  const loaders = nodes.filter((n) => n.class_type === 'LoadImage');
+  const selfie = loaders.find((n) => /selfie/i.test(n._meta?.title || '')) || loaders[0];
+  if (!selfie) throw new Error('The ComfyUI workflow needs a "Load Image" node for the selfie.');
+  selfie.inputs.image = imageName;
+
+  for (const n of nodes) {
+    if (['ImageScale', 'EmptyLatentImage', 'EmptySD3LatentImage'].includes(n.class_type)) {
+      if ('width' in n.inputs) n.inputs.width = width;
+      if ('height' in n.inputs) n.inputs.height = height;
+    }
+    for (const key of ['seed', 'noise_seed']) {
+      if (typeof n.inputs?.[key] === 'number') n.inputs[key] = Math.floor(Math.random() * 2 ** 48);
+    }
+    if (process.env.COMFYUI_CHECKPOINT && n.class_type === 'CheckpointLoaderSimple') {
+      n.inputs.ckpt_name = process.env.COMFYUI_CHECKPOINT;
+    }
+  }
+  return wf;
+}
+
+async function transformWithComfyUI(imageB64, mime, prompt, orientation) {
+  const base = (process.env.COMFYUI_URL || 'http://127.0.0.1:8188').replace(/\/+$/, '');
+  const wfPath = path.resolve(ROOT, process.env.COMFYUI_WORKFLOW || 'comfyui-workflow.json');
+  if (!fs.existsSync(wfPath)) {
+    throw new Error(`ComfyUI workflow not found at ${path.basename(wfPath)}. Copy comfyui-workflow.example.json to comfyui-workflow.json, or set COMFYUI_WORKFLOW in .env.`);
+  }
+  const timeoutMs = (Number(process.env.COMFYUI_TIMEOUT_SECONDS) || 180) * 1000;
+  const started = Date.now();
+
+  // 1. Upload the selfie into ComfyUI's input folder
+  const ext = mime === 'image/png' ? 'png' : 'jpg';
+  const form = new FormData();
+  form.append('image', new Blob([Buffer.from(imageB64, 'base64')], { type: mime }), `career-selfie-${Date.now()}.${ext}`);
+  form.append('overwrite', 'true');
+  const up = await (await comfyFetch(base, '/upload/image', { method: 'POST', body: form })).json();
+  const imageName = up.subfolder ? `${up.subfolder}/${up.name}` : up.name;
+
+  // 2. Queue the workflow
+  const workflow = prepareComfyWorkflow(JSON.parse(fs.readFileSync(wfPath, 'utf8')), { prompt, imageName, orientation });
+  const queued = await (await comfyFetch(base, '/prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: workflow, client_id: 'career-transformation' }),
+  })).json();
+  const id = queued.prompt_id;
+  if (!id) throw new Error('ComfyUI did not accept the workflow.');
+
+  // 3. Wait until it is finished
+  let entry;
+  while (!entry) {
+    if (Date.now() - started > timeoutMs) {
+      fetch(`${base}/interrupt`, { method: 'POST' }).catch(() => {});
+      throw new Error(`ComfyUI took longer than ${timeoutMs / 1000} seconds. Try again, or raise COMFYUI_TIMEOUT_SECONDS.`);
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+    const history = await (await comfyFetch(base, `/history/${id}`)).json();
+    const h = history[id];
+    if (h?.status?.status_str === 'error') {
+      const msg = h.status.messages?.find(([type]) => type === 'execution_error')?.[1];
+      throw new Error(`ComfyUI failed${msg ? ` in ${msg.node_type}: ${msg.exception_message}` : ''}`);
+    }
+    if (h?.status?.completed) entry = h;
+  }
+
+  // 4. Download the result (prefer a Save Image output over previews)
+  const images = Object.values(entry.outputs || {}).flatMap((o) => o.images || []);
+  const img = images.find((i) => i.type === 'output') || images[0];
+  if (!img) throw new Error('The ComfyUI workflow finished without an image. Does it end in a "Save Image" node?');
+  const q = new URLSearchParams({ filename: img.filename, subfolder: img.subfolder || '', type: img.type || 'output' });
+  const file = await comfyFetch(base, `/view?${q}`);
+  const type = file.headers.get('content-type') || '';
+  console.log(`ComfyUI finished in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+  return { b64: Buffer.from(await file.arrayBuffer()).toString('base64'), mime: type.startsWith('image/') ? type : 'image/png' };
+}
+
+const providers = { gemini: transformWithGemini, openai: transformWithOpenAI, comfyui: transformWithComfyUI, demo: transformDemo };
 
 // ---------- HTTP helpers ----------
 const MIME = {

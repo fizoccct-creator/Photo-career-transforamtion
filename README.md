@@ -54,6 +54,7 @@ Set `AI_PROVIDER` in `.env` (currently `openai`). Get a key at https://platform.
 | `openai` | OpenAI image edits (`gpt-image-2.5-sunburst`, default) | `OPENAI_API_KEY`  |
 | `demo`   | Returns your own photo in the career frame (test flow) | none              |
 | `gemini` | Google Gemini image editing (`gemini-3.1-flash-image`) | `GEMINI_API_KEY`  |
+| `comfyui` | Your own GPU PC running ComfyUI (free per photo). See [`COMFYUI.md`](COMFYUI.md) | none |
 
 API keys stay on the server; the browser never sees them. Run `npm run models` to list the image models your key can use, then set `OPENAI_MODEL` / `GEMINI_MODEL` in `.env`.
 
@@ -77,6 +78,7 @@ Add an entry to [`occupations.json`](occupations.json). No code changes needed:
 ## Files
 
 - `server.js`: web server and AI provider calls (`/api/occupations`, `/api/transform`)
+- `comfyui-workflow.example.json`: starter ComfyUI workflow (see `COMFYUI.md`)
 - `occupations.json`: the career cards
 - `public/ar.js`: AR mode (hand tracking, pick up and hold a card, countdown photo)
 - `public/app.js`: screens, classic mode, transformation and download
