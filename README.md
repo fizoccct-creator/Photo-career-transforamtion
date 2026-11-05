@@ -33,8 +33,8 @@ Everything adapts to the screen shape, so a portrait kiosk or monitor works as w
 
 | Screen     | Card layout                | Photo sent to AI | AI output size |
 |------------|----------------------------|------------------|----------------|
-| Horizontal | one row along the bottom   | 4:3              | 1536×1024      |
-| Vertical   | rows of 3 along the bottom | 3:4              | 1024×1536      |
+| Horizontal | one row along the bottom (2 rows of 8 with more than 10 careers) | 4:3 | 1536×1024 |
+| Vertical   | rows of 3 along the bottom (rows of 4 with more than 10 careers) | 3:4 | 1024×1536 |
 
 ## AR mode
 

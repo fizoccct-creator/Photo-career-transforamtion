@@ -2,7 +2,7 @@
 
 Design each screen in **landscape (1920 × 1080)** and **portrait (1080 × 1920)**. Name the Figma frames like the headings, for example `landscape-05-ar-lift`. The matching screenshot of the current app is in `reference/<orientation>/<same name>.png`.
 
-`{Career}` = career title (longest: **Graphic Designer**), `{emoji}` = its icon.
+`{Career}` = career title (longest: **Robotics Engineer**), `{emoji}` = its icon. The 16 careers are in `occupations.json`.
 
 ## Player flow (AR mode)
 
@@ -27,7 +27,7 @@ Live camera full screen, nobody in the frame yet.
   - "🧍 Move into the frame in the middle"
 - Small status line under the banner: "Hand + head tracking ready ✋🙂" (also "Loading hand tracking…")
 - Stand frame (dashed, subtle) with label "STAND HERE · WAIST UP" and a dashed head-and-shoulders outline
-- Career cards along the bottom (1 row of 5 in landscape, 3 + 2 in portrait), floating in 3D
+- 16 career cards along the bottom (2 rows of 8 in landscape, 4 rows of 4 in portrait), floating in 3D. Longest title: **Robotics Engineer**
 
 ### 03-ar-player
 Someone is in the frame and is now the player. (No reference screenshot: it needs a real face on camera. It looks like 02 with the changes below.)

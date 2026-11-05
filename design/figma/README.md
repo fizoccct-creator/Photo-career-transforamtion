@@ -42,7 +42,7 @@ Create one Figma file, for example **Career Transformation booth**, with these p
 The app has to work live, so a few things are fixed:
 
 - **The camera fills the AR screen.** Use a photo of a person standing waist up as a placeholder for the live camera image. Design the parts *on top*: banner, buttons, cards, stand frame and lift line.
-- **The cards live in the bottom third** (about 32 % of the height). Landscape has one row of 5. Portrait has rows of 3 (3 + 2). Keep the middle of the screen clear: that's where the player's face and body are.
+- **The cards live at the bottom.** With 16 careers: landscape has 2 rows of 8, portrait has 4 rows of 4, using up to 40 % of the height (with 10 or fewer careers: one row in landscape, rows of 3 in portrait, 32 %). Keep the middle of the screen clear: that's where the player's face and body are.
 - **The stand frame** is in the middle: 42 % of the width in landscape, 60 % in portrait. It runs from near the top down to the cards. Keep it subtle, because it sits over the camera image.
 - **Texts change while playing.** Design the longest version (see `screens.md`), for example "⬆ Lift ✈️ Graphic Designer up above the line to choose it".
 - **Touch and distance:** players stand about 1–2 m from the screen. Use big text and big targets; buttons at least 64 px tall at 1920 × 1080.
@@ -55,7 +55,7 @@ Name each artwork frame **with its path**. Figma turns `/` into folders when exp
 
 | Figma frame name | Size (px) | Export as |
 |------------------|-----------|-----------|
-| `cards/pilot` (one per career: `doctor`, `photographer`, `videographer`, `graphic-designer`) | 750 × 1000 | PNG |
+| `cards/pilot` (one per career, 16 in all: `doctor`, `photographer`, `videographer`, `graphic-designer`, `film-director`, `news-anchor`, `music-producer`, `fashion-designer`, `astronaut`, `chef`, `firefighter`, `football-player`, `scientist`, `robotics-engineer`, `architect`) | 750 × 1000 | PNG |
 | `frames/frame-portrait` | 1080 × 1920 | PNG, transparent photo window |
 | `frames/frame-landscape` | 1920 × 1080 | PNG, transparent photo window |
 | `frames/background-portrait` / `frames/background-landscape` (optional) | same as the frames | PNG or JPG |
