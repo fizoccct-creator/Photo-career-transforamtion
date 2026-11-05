@@ -1,21 +1,41 @@
 // AR card picker: the webcam fills the stage and the career cards float in 3D along the bottom.
-// - Point at a card with your index finger, or pinch (thumb + index) to pick it up and carry it.
-// - Keep hovering or holding it for HOLD_MS and it's chosen, then a COUNTDOWN takes the photo.
+// - The player stands in the marked zone in the middle of the screen, at medium-shot distance
+//   (waist up in the photo).
+// - Point at a card with your index finger for GRAB_MS and it sticks to your finger.
+// - Lift it up above the line and keep it there for CONFIRM_MS to choose it; a card that stays
+//   in the bottom area is never chosen. Then a COUNTDOWN takes the photo.
 // - The cards react in 3D: they tilt toward your finger, and when you move your head they turn
 //   as if you're looking around them (head tracking, with the hand or mouse as a fallback).
-// - The mouse works as a stand-in hand (move = point, press = pinch).
+// - The mouse works as a stand-in finger (move = point).
+// - One player at a time: the closest face inside the zone is the player, and only a hand that
+//   belongs to that face (close to it, about the same size) can pick up cards.
 import { toCroppedDataUrl, ratioFor, sleep } from './util.js';
 
 // ---- Settings you may want to tweak ----
-const HOLD_MS = 3000;          // how long to hover or hold a card to choose it
+const GRAB_MS = 600;           // point at a card this long to pick it up
+const CONFIRM_MS = 800;        // keep the lifted card above the line this long to choose it
+const DROP_MS = 700;           // a carried card goes back if the hand is lost for this long
 const COUNTDOWN = 5;           // seconds of countdown before the photo is taken
 const READY_MS = 1500;         // pause after choosing, to lower your hand
 const CARD_RATIO = 4 / 3;      // card height / width (design your card images at 3:4, e.g. 750×1000)
 const LOOK_AROUND = 1;         // strength of the head-tracked 3D effect (0 = off)
+// Stand zone: where the player has to stand to play
+const ZONE_WIDTH = 0.42;       // share of the screen width, centred (landscape screens)
+const ZONE_WIDTH_PORTRAIT = 0.6; // same, for vertical screens
+// Medium shot (waist up): the face is about 1/5 of the photo height. Measured as face height / photo height.
+const SHOT_TARGET = 0.2;       // ideal medium shot (used to draw the guide silhouette)
+const SHOT_MIN = 0.15;         // smaller face = too far, more than waist up ("step closer")
+const SHOT_MAX = 0.27;         // bigger face = too close, only chest up ("step back")
+// One-player lock (sizes are in face widths, so they work at any distance from the camera)
+const MIN_FACE = 0.04;         // ignore faces narrower than this share of the camera width (people far away)
+const PLAYER_LOST_MS = 1500;   // keep the player this long when their face is briefly hidden
+const TAKEOVER_RATIO = 1.5;    // someone this much closer (bigger face) than the player…
+const TAKEOVER_MS = 1200;      // …for this long, while no card is in progress, becomes the new player
+const REACH = 4.5;             // a hand counts only if its wrist is within this many face widths of the face
+const MIN_HAND = 0.35;         // and its palm is at least this many face widths long (not a hand further back)
 // -----------------------------------------
 
 const GRACE_MS = 350;          // tolerate short tracking dropouts before resetting the timer
-const PINCH_ON = 0.33, PINCH_OFF = 0.5; // pinch distance relative to hand size (hysteresis)
 const MP_VERSION = '0.10.14';
 const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
 const HAND_MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
@@ -42,11 +62,16 @@ const BOTTOM_PAD = 28;
 
 const ui = {
   locked: false,
-  held: null,               // { card, key, lastX }
-  holdCard: null, holdStart: 0, lastActive: 0,
-  prevPinch: {}, handPinch: [], smooth: {},
-  mouse: { inside: false, x: 0, y: 0, down: false },
+  grab: null,               // card stuck to a finger: { card, key, lostAt }
+  hoverCard: null, hoverKey: null, hoverStart: 0, lastActive: 0,
+  confirmStart: 0,          // when the carried card went above the lift line
+  smooth: {},
+  mouse: { inside: false, x: 0, y: 0 },
   head: { x: 0, y: 0, seen: 0 },  // viewer position, -1..1 (smoothed)
+  player: null,                    // locked face, in video pixels: { cx, cy, w, seen, challenge }
+  handLock: null,                  // wrist of the player's active hand, in video pixels
+  faces: [],                       // every face seen this frame (to tell whose hand is whose)
+  zoneHint: 'none',                // why nobody is playing yet: none | far | near | side
   sway: 0,                         // extra tilt from moving a held card
 };
 
@@ -105,9 +130,9 @@ async function loadVision() {
       const fileset = await FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
       const withFallback = (make) => make('GPU').catch(() => make('CPU'));
       hands = await withFallback((delegate) => HandLandmarker.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: HAND_MODEL, delegate }, runningMode: 'VIDEO', numHands: 2,
+        baseOptions: { modelAssetPath: HAND_MODEL, delegate }, runningMode: 'VIDEO', numHands: 4, // see everyone's hands, then keep only the player's
       }));
-      // Face tracking only powers the look-around effect; the app works without it.
+      // Face tracking picks the player and powers the look-around effect; the app works without it.
       faces = await withFallback((delegate) => FaceDetector.createFromOptions(fileset, {
         baseOptions: { modelAssetPath: FACE_MODEL, delegate }, runningMode: 'VIDEO', minDetectionConfidence: 0.5,
       })).catch((e) => { console.warn('Face tracking unavailable', e); return null; });
@@ -122,11 +147,11 @@ export function preloadHands() { loadVision().catch(() => {}); }
 export async function startAR(list, capturedCallback) {
   occupations = list;
   onCaptured = capturedCallback;
-  Object.assign(ui, { locked: false, held: null, holdCard: null, prevPinch: {}, handPinch: [], smooth: {}, sway: 0 });
+  Object.assign(ui, { locked: false, grab: null, hoverCard: null, confirmStart: 0, smooth: {}, sway: 0, player: null, handLock: null, zoneHint: 'none' });
   flash.classList.remove('go');
   countdownEl.hidden = true;
   buildCards();
-  setBanner('✋ Reach for a card');
+  setBanner(faces ? '🧍 Stand in the frame to play' : '☝️ Point at a card to pick it up');
   if (!running) { running = true; requestAnimationFrame(loop); }
 
   if (!stream) {
@@ -168,12 +193,7 @@ stage.addEventListener('pointermove', (e) => {
   const r = stage.getBoundingClientRect();
   Object.assign(ui.mouse, { inside: true, x: e.clientX - r.left, y: e.clientY - r.top });
 });
-stage.addEventListener('pointerleave', () => { ui.mouse.inside = false; ui.mouse.down = false; });
-stage.addEventListener('pointerdown', (e) => {
-  if (e.target.closest('button')) return;
-  ui.mouse.down = true; stage.setPointerCapture?.(e.pointerId);
-});
-stage.addEventListener('pointerup', () => (ui.mouse.down = false));
+stage.addEventListener('pointerleave', () => { ui.mouse.inside = false; });
 
 // Map a normalized point (video space) to stage pixels, accounting for object-fit: cover + mirroring.
 function toStage(nx, ny) {
@@ -184,21 +204,114 @@ function toStage(nx, ny) {
   return { x: (W - dw) / 2 + (1 - nx) * dw, y: (H - dh) / 2 + ny * dh };
 }
 
-let lastVideoTime = -1, lastHands = [], frameNo = 0;
+// Stage pixels per video pixel (object-fit: cover).
+const videoScale = () => Math.max(stage.clientWidth / (video.videoWidth || 1), stage.clientHeight / (video.videoHeight || 1));
+
+let lastVideoTime = -1, lastHands = [];
 function track() {
   if (!hands || video.readyState < 2 || video.currentTime === lastVideoTime) return;
   lastVideoTime = video.currentTime;
   const ts = performance.now();
+  const vw = video.videoWidth, vh = video.videoHeight;
   lastHands = hands.detectForVideo(video, ts).landmarks || [];
-  if (faces && LOOK_AROUND && frameNo++ % 2 === 0) {
-    const d = faces.detectForVideo(video, ts).detections?.[0];
-    if (d) {
-      const b = d.boundingBox;
-      const p = toStage((b.originX + b.width / 2) / video.videoWidth, (b.originY + b.height / 2) / video.videoHeight);
-      setHead((p.x / stage.clientWidth) * 2 - 1, (p.y / stage.clientHeight) * 2 - 1, 0.25);
-      ui.head.seen = ts;
-    }
+  if (faces) {
+    const found = (faces.detectForVideo(video, ts).detections || [])
+      .map(({ boundingBox: b }) => ({ cx: b.originX + b.width / 2, cy: b.originY + b.height / 2, w: b.width, h: b.height }))
+      .filter((f) => f.w >= vw * MIN_FACE);
+    updatePlayer(found, ts);
   }
+  const p = ui.player;
+  if (p && LOOK_AROUND && ts - p.seen < 800) {
+    const s = toStage(p.cx / vw, p.cy / vh);
+    setHead((s.x / stage.clientWidth) * 2 - 1, (s.y / stage.clientHeight) * 2 - 1, 0.25);
+    ui.head.seen = ts;
+  }
+}
+
+// Where a face is relative to the stand zone: in | far | near | side
+function zoneStatus(f) {
+  const vw = video.videoWidth || 1, vh = video.videoHeight || 1;
+  const shot = (f.h || f.w) / photoHeight();
+  if (shot < SHOT_MIN) return 'far';
+  if (shot > SHOT_MAX) return 'near';
+  const x = toStage(f.cx / vw, f.cy / vh).x / stage.clientWidth;
+  return Math.abs(x - 0.5) <= zoneWidth() / 2 ? 'in' : 'side';
+}
+// Height (video pixels) of the part of the camera image that ends up in the photo.
+function photoHeight() {
+  const vw = video.videoWidth || 1, vh = video.videoHeight || 1, r = ratioFor(stageOrientation());
+  return vw / vh > r ? vh : vw / r;
+}
+const zoneWidth = () => (stageOrientation() === 'portrait' ? ZONE_WIDTH_PORTRAIT : ZONE_WIDTH);
+
+// Keep following the same face; switch only when they leave, or someone clearly closer stays put.
+function updatePlayer(all, ts) {
+  ui.faces = all;
+  const biggest = (list) => list.reduce((a, b) => (!a || b.w > a.w ? b : a), null);
+  const found = all.filter((f) => zoneStatus(f) === 'in'); // only people in the stand zone can play
+  ui.zoneHint = found.length ? 'in' : all.length ? zoneStatus(biggest(all)) : 'none';
+  const lock = (f) => { ui.player = { ...f, seen: ts, challenge: 0 }; ui.handLock = null; };
+  const p = ui.player;
+  if (!p) { if (found.length) lock(biggest(found)); return; }
+
+  const match = found
+    .map((f) => ({ f, d: Math.hypot(f.cx - p.cx, f.cy - p.cy) }))
+    .filter(({ d }) => d < p.w * 0.6) // the same person barely moves between frames
+    .sort((a, b) => a.d - b.d)[0]?.f;
+  if (match) {
+    p.cx += (match.cx - p.cx) * 0.5; p.cy += (match.cy - p.cy) * 0.5; p.w += (match.w - p.w) * 0.3;
+    p.seen = ts;
+  }
+
+  const rival = biggest(found.filter((f) => f !== match));
+  const busy = ui.grab || ui.hoverCard;
+  if (rival && !busy && rival.w > (match ? match.w : p.w) * TAKEOVER_RATIO) {
+    p.challenge ||= ts;
+    if (ts - p.challenge > TAKEOVER_MS) return lock(rival);
+  } else p.challenge = 0;
+
+  if (!match && ts - p.seen > PLAYER_LOST_MS) {
+    ui.player = null; ui.handLock = null;
+    if (found.length) lock(biggest(found));
+  }
+}
+
+// The one hand allowed to interact: the player's hand (or, with no face to go on, the closest hand).
+function pickPlayerHand(list) {
+  const vw = video.videoWidth || 1, vh = video.videoHeight || 1;
+  const now = performance.now();
+  const hs = list.map((hand) => {
+    const wrist = { x: hand[0].x * vw, y: hand[0].y * vh };
+    const palm = Math.hypot((hand[9].x - hand[0].x) * vw, (hand[9].y - hand[0].y) * vh);
+    return { hand, wrist, palm };
+  });
+  const p = ui.player && now - ui.player.seen < PLAYER_LOST_MS ? ui.player : null;
+  let candidates = hs;
+  if (p) {
+    // A hand belongs to whichever face is nearest to it (measured in that face's widths).
+    const reach = (f, wrist) => Math.hypot(wrist.x - f.cx, wrist.y - f.cy) / f.w;
+    const others = ui.faces.filter((f) => Math.hypot(f.cx - p.cx, f.cy - p.cy) > p.w * 0.6);
+    candidates = hs.filter(({ wrist, palm }) => {
+      const mine = reach(p, wrist);
+      return palm >= p.w * MIN_HAND && mine <= REACH && others.every((f) => reach(f, wrist) > mine);
+    });
+  } else if (faces) {
+    candidates = []; // nobody in the stand zone (or the player's face is gone): ignore all hands
+  }
+  if (!candidates.length) { ui.handLock = null; return null; }
+
+  const lockRange = (p ? p.w : 120) * 2;
+  const near = (pt) => (a, b) => Math.hypot(a.wrist.x - pt.x, a.wrist.y - pt.y) - Math.hypot(b.wrist.x - pt.x, b.wrist.y - pt.y);
+  let chosen = null;
+  if (ui.handLock) {
+    const same = [...candidates].sort(near(ui.handLock))[0];
+    if (Math.hypot(same.wrist.x - ui.handLock.x, same.wrist.y - ui.handLock.y) < lockRange) chosen = same;
+  }
+  if (!chosen) {
+    chosen = p ? [...candidates].sort(near({ x: p.cx, y: p.cy }))[0] : [...candidates].sort((a, b) => b.palm - a.palm)[0];
+  }
+  ui.handLock = { ...chosen.wrist };
+  return chosen.hand;
 }
 
 function setHead(x, y, k) {
@@ -209,16 +322,9 @@ function setHead(x, y, k) {
 function readPointers() {
   track();
   const pointers = [];
-  lastHands.forEach((hand, i) => {
-    const d = (a, b) => Math.hypot(hand[a].x - hand[b].x, hand[a].y - hand[b].y);
-    const ratio = d(4, 8) / (d(0, 9) || 1);
-    const was = ui.handPinch[i] || false;
-    const pinch = was ? ratio < PINCH_OFF : ratio < PINCH_ON;
-    ui.handPinch[i] = pinch;
-    const tip = pinch ? { x: (hand[4].x + hand[8].x) / 2, y: (hand[4].y + hand[8].y) / 2 } : hand[8];
-    pointers.push({ key: `hand${i}`, ...toStage(tip.x, tip.y), pinch });
-  });
-  if (ui.mouse.inside) pointers.push({ key: 'mouse', x: ui.mouse.x, y: ui.mouse.y, pinch: ui.mouse.down });
+  const hand = pickPlayerHand(lastHands);
+  if (hand) pointers.push({ key: 'hand', ...toStage(hand[8].x, hand[8].y) }); // index fingertip
+  if (ui.mouse.inside) pointers.push({ key: 'mouse', x: ui.mouse.x, y: ui.mouse.y });
 
   for (const p of pointers) {
     const s = ui.smooth[p.key] || { x: p.x, y: p.y };
@@ -235,6 +341,72 @@ function readPointers() {
   return pointers;
 }
 
+// On-screen guides: the stand zone, the player's face frame, and the line to lift a card above.
+const zoneEl = document.createElement('div');
+zoneEl.className = 'ar-zone';
+zoneEl.innerHTML = '<span>Stand here · waist up</span>';
+// Medium-shot outline (head + shoulders down to the waist): line up with it before playing.
+const shapeEl = document.createElement('div');
+shapeEl.className = 'ar-shape';
+shapeEl.innerHTML = `<svg viewBox="0 0 200 300" preserveAspectRatio="none">
+  <ellipse cx="100" cy="50" rx="34" ry="44"/>
+  <path d="M100 116 C72 116 64 126 48 136 C24 148 14 172 14 210 L14 300 M186 300 L186 210 C186 172 176 148 152 136 C136 126 128 116 100 116"/>
+</svg>`;
+const liftEl = document.createElement('div');
+liftEl.className = 'ar-lift';
+liftEl.innerHTML = '<span>⬆ Lift the card above this line</span>';
+const playerEl = document.createElement('div');
+playerEl.className = 'ar-player';
+playerEl.innerHTML = '<span>Player</span>';
+zoneEl.prepend(shapeEl); // clipped to the stand frame
+cardsLayer.before(zoneEl, liftEl);
+cursorsLayer.before(playerEl);
+
+// The carried card (its centre, where the finger is) must go above this line to be chosen.
+function liftLineY() {
+  const top = Math.min(...cards.map((c) => c.slot.y)) - size.ch / 2;
+  return Math.max(stage.clientHeight * 0.15, top - size.ch * 0.6);
+}
+
+function drawGuides() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const p = ui.player;
+  const playing = p && performance.now() - p.seen < PLAYER_LOST_MS;
+
+  zoneEl.hidden = ui.locked || !faces;
+  const zw = zoneWidth() * W, zoneTop = H * 0.05;
+  if (!zoneEl.hidden) {
+    zoneEl.style.left = `${(W - zw) / 2}px`; zoneEl.style.width = `${zw}px`;
+    const trayTop = Math.min(...cards.map((c) => c.slot.y)) - size.ch / 2 - 12; // down to the cards
+    zoneEl.style.top = `${zoneTop}px`; zoneEl.style.height = `${trayTop - zoneTop}px`;
+    zoneEl.classList.toggle('occupied', !!playing);
+  }
+
+  // The outline is drawn so a face of SHOT_TARGET size at the top of the photo means waist up.
+  shapeEl.hidden = zoneEl.hidden || !!playing;
+  if (!shapeEl.hidden && video.videoWidth) {
+    const vh = video.videoHeight, ph = photoHeight();
+    const k = (SHOT_TARGET * ph * videoScale()) / 63;          // svg units → stage px (face box ≈ 63 units)
+    const headY = toStage(0.5, ((vh - ph) / 2 + ph * 0.25) / vh).y; // face centre ~1/4 down the photo
+    shapeEl.style.width = `${200 * k}px`; shapeEl.style.height = `${300 * k}px`;
+    shapeEl.style.transform = `translate(${zw / 2 - 100 * k}px, ${headY - 50 * k - zoneTop}px)`; // zone-relative
+  }
+
+  liftEl.hidden = ui.locked || !ui.grab;
+  if (!liftEl.hidden) {
+    liftEl.style.transform = `translateY(${liftLineY()}px)`;
+    liftEl.classList.toggle('reached', !!ui.confirmStart);
+  }
+
+  playerEl.hidden = ui.locked || !playing;
+  if (!playerEl.hidden) {
+    const c = toStage(p.cx / video.videoWidth, p.cy / video.videoHeight);
+    const w = p.w * videoScale() * 1.25;
+    playerEl.style.width = `${w}px`; playerEl.style.height = `${w * 1.3}px`;
+    playerEl.style.transform = `translate(${c.x}px, ${c.y}px) translate(-50%, -50%)`;
+  }
+}
+
 function cardAt(x, y) {
   const { cw, ch } = size;
   const pad = 14;
@@ -247,55 +419,68 @@ function loop(now = performance.now()) {
   if (!running) return;
   const pointers = ui.locked ? [] : readPointers();
   drawCursors(pointers);
-  const hoverPointer = {};
+  drawGuides();
+  let tiltPointer = null;
 
   if (!ui.locked) {
-    let active = null;
+    let ring = 0, ringCard = null; // progress shown around a card: picking it up, then confirming
 
-    if (ui.held) {
-      const p = pointers.find((q) => q.key === ui.held.key);
-      if (p && p.pinch) {
-        ui.sway += ((p.x - ui.held.card.pos.x) * 0.9 - ui.sway) * 0.2; // lean in the direction of travel
-        ui.held.card.pos = { x: p.x, y: p.y };
-        active = ui.held.card;
-      } else ui.held = null;
-    }
+    // Carrying a card: it follows the finger; above the lift line it gets confirmed.
+    if (ui.grab) {
+      const g = ui.grab, c = g.card;
+      const p = pointers.find((q) => q.key === g.key);
+      if (p) {
+        g.lostAt = 0;
+        ui.sway += ((p.x - c.pos.x) * 0.9 - ui.sway) * 0.2; // lean in the direction of travel
+        c.pos = { x: p.x, y: p.y };
+      } else if (!g.lostAt) g.lostAt = now;
 
-    if (!ui.held) {
-      ui.sway *= 0.85;
-      for (const p of pointers) {
-        const c = cardAt(p.x, p.y);
-        const pinchStarted = p.pinch && !ui.prevPinch[p.key];
-        if (c && pinchStarted) { ui.held = { card: c, key: p.key }; active = c; break; }
-        if (c && !active) { active = c; hoverPointer.p = p; }
+      if (g.lostAt && now - g.lostAt > DROP_MS) { ui.grab = null; ui.confirmStart = 0; } // hand gone: put it back
+      else {
+        if (c.pos.y < liftLineY()) {
+          ui.confirmStart ||= now;
+          ring = Math.min(1, (now - ui.confirmStart) / CONFIRM_MS);
+        } else ui.confirmStart = 0; // still in the bottom area: not chosen
+        ringCard = c;
       }
     }
-    for (const p of pointers) ui.prevPinch[p.key] = p.pinch;
 
-    if (active) {
-      if (active !== ui.holdCard) { ui.holdCard = active; ui.holdStart = now; }
-      ui.lastActive = now;
-    } else if (ui.holdCard && now - ui.lastActive > GRACE_MS) {
-      ui.holdCard = null;
+    // Not carrying: point at a card for GRAB_MS to pick it up.
+    if (!ui.grab) {
+      ui.sway *= 0.85;
+      let over = null;
+      for (const p of pointers) {
+        const c = cardAt(p.x, p.y);
+        if (c) { over = c; tiltPointer = p; ui.hoverKey = p.key; break; }
+      }
+      if (over) {
+        if (over !== ui.hoverCard) { ui.hoverCard = over; ui.hoverStart = now; }
+        ui.lastActive = now;
+      } else if (ui.hoverCard && now - ui.lastActive > GRACE_MS) ui.hoverCard = null;
+
+      if (ui.hoverCard) {
+        ring = Math.min(1, (now - ui.hoverStart) / GRAB_MS); ringCard = ui.hoverCard;
+        if (ring >= 1) {
+          ui.grab = { card: ui.hoverCard, key: ui.hoverKey, lostAt: 0 };
+          ui.hoverCard = null; ui.confirmStart = 0; ring = 0;
+        }
+      }
     }
-
-    const progress = ui.holdCard ? Math.min(1, (now - ui.holdStart) / HOLD_MS) : 0;
-    updateBanner(progress);
+    updateBanner();
 
     for (const c of cards) {
-      if (ui.held?.card !== c) {
+      if (ui.grab?.card !== c) {
         c.pos.x += (c.slot.x - c.pos.x) * 0.18;
         c.pos.y += (c.slot.y - c.pos.y) * 0.18;
       }
-      const isActive = c === ui.holdCard;
-      c.el.classList.toggle('hover', isActive);
-      c.el.classList.toggle('held', ui.held?.card === c);
-      c.ring.style.strokeDashoffset = String(100 * (1 - (isActive ? progress : 0)));
+      c.el.classList.toggle('hover', c === ui.hoverCard);
+      c.el.classList.toggle('held', ui.grab?.card === c);
+      c.ring.style.strokeDashoffset = String(100 * (1 - (c === ringCard ? ring : 0)));
     }
-    if (progress >= 1) select(ui.holdCard);
+    if (ui.grab && ui.confirmStart && now - ui.confirmStart >= CONFIRM_MS) select(ui.grab.card);
   }
 
-  for (const c of cards) if (!c.el.classList.contains('chosen')) place(c, now, hoverPointer.p);
+  for (const c of cards) if (!c.el.classList.contains('chosen')) place(c, now, tiltPointer);
   requestAnimationFrame(loop);
 }
 
@@ -303,7 +488,7 @@ function loop(now = performance.now()) {
 function place(c, now, pointer) {
   const t = now / 1000;
   const W = stage.clientWidth;
-  const held = ui.held?.card === c, hover = c === ui.holdCard;
+  const held = ui.grab?.card === c, hover = c === ui.hoverCard;
   const k = LOOK_AROUND;
 
   // Viewer to the right → right edge comes toward you (rotateY negative), viewer above → top comes toward you.
@@ -327,11 +512,23 @@ function place(c, now, pointer) {
   c.el.style.setProperty('--sheen-y', `${50 + c.tilt.x * 2.2}%`);
 }
 
-function updateBanner(progress) {
-  if (!ui.holdCard) return setBanner('✋ Reach for a card, or pinch to pick it up');
-  const left = Math.max(1, Math.ceil((HOLD_MS * (1 - progress)) / 1000));
-  const verb = ui.held ? 'Holding' : 'Hovering';
-  setBanner(`${ui.holdCard.occ.emoji} ${verb} ${ui.holdCard.occ.title}… ${left}`);
+const ZONE_HINTS = {
+  none: '🧍 Stand in the frame to play',
+  far: '🚶 Step closer: we want you waist up',
+  near: '↩️ Step back a little: we want you waist up',
+  side: '🧍 Move into the frame in the middle',
+};
+
+function updateBanner() {
+  const g = ui.grab;
+  if (g) {
+    const { emoji, title } = g.card.occ;
+    return setBanner(ui.confirmStart ? `✨ Keep ${title} up there…` : `⬆ Lift ${emoji} ${title} up above the line to choose it`);
+  }
+  if (ui.hoverCard) return setBanner(`☝️ Picking up ${ui.hoverCard.occ.title}…`);
+  const playing = ui.player && performance.now() - ui.player.seen < PLAYER_LOST_MS;
+  if (faces && hands && !playing && !ui.mouse.inside) return setBanner(ZONE_HINTS[ui.zoneHint] || ZONE_HINTS.none);
+  setBanner('☝️ Point at a card to pick it up');
 }
 
 function drawCursors(pointers) {
@@ -342,7 +539,7 @@ function drawCursors(pointers) {
     const p = pointers[i];
     d.hidden = !p;
     if (!p) return;
-    d.classList.toggle('pinch', p.pinch);
+    d.classList.toggle('carrying', ui.grab?.key === p.key);
     d.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
   });
 }
@@ -350,7 +547,7 @@ function drawCursors(pointers) {
 // ---------- Selection → countdown → photo ----------
 async function select(card) {
   ui.locked = true;
-  ui.held = null;
+  ui.grab = null; ui.hoverCard = null; ui.confirmStart = 0;
   cursorsLayer.innerHTML = '';
   for (const c of cards) c.el.classList.toggle('faded', c !== card);
   card.el.classList.remove('hover', 'held');
