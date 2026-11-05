@@ -226,7 +226,7 @@ body[data-screen="home"] .topbar, body[data-screen="ar"] .topbar { display: none
   position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%;
   border: 3px solid var(--light); background: color-mix(in srgb, var(--primary) 45%, transparent); box-shadow: 0 0 16px var(--primary); transition: width .15s, height .15s;
 }
-.ar-cursor.pinch { width: 18px; height: 18px; background: var(--accent); }
+.ar-cursor.carrying { width: 18px; height: 18px; background: var(--accent); }
 .ar-banner {
   max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
   background: color-mix(in srgb, var(--secondary) 85%, transparent); border: 2px solid var(--primary);
@@ -274,3 +274,49 @@ body[data-screen="home"] .topbar, body[data-screen="ar"] .topbar { display: none
   .result-layout { flex-wrap: nowrap; }
   .result-wrap canvas { max-width: calc(100vw - 400px); max-height: 64vh; }
 }
+
+/* One-player lock: frame around the face of whoever is playing */
+.ar-player {
+  position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2;
+  border: 3px solid var(--primary); border-radius: 40%;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 70%, transparent);
+}
+.ar-player span {
+  position: absolute; left: 50%; top: -14px; transform: translate(-50%, -100%);
+  background: var(--primary); color: var(--dark); font-weight: 800; font-size: .75rem;
+  letter-spacing: .08em; text-transform: uppercase; padding: 3px 10px; border-radius: 99px; white-space: nowrap;
+}
+
+/* Stand zone: where the player must stand */
+.ar-zone {
+  position: absolute; pointer-events: none;
+  border: 3px dashed color-mix(in srgb, var(--light) 55%, transparent); border-radius: 28px;
+  background: color-mix(in srgb, var(--dark) 18%, transparent); transition: border-color .3s, background .3s;
+  overflow: hidden;
+}
+.ar-zone span {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+  font-weight: 800; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+  color: var(--light); background: color-mix(in srgb, var(--dark) 70%, transparent); padding: 4px 12px; border-radius: 99px;
+}
+.ar-zone.occupied { border-style: solid; border-color: var(--primary); background: transparent; }
+.ar-zone.occupied span { opacity: 0; }
+
+/* Line the carried card has to be lifted above */
+.ar-lift {
+  position: absolute; left: 0; right: 0; top: 0; height: 0; pointer-events: none; z-index: 1;
+  border-top: 3px dashed var(--light);
+}
+.ar-lift span {
+  position: absolute; left: 50%; top: -12px; transform: translate(-50%, -100%);
+  background: var(--secondary); border: 2px solid var(--primary); color: var(--light);
+  font-weight: 700; font-size: .85rem; padding: 4px 14px; border-radius: 99px; white-space: nowrap;
+}
+.ar-lift.reached { border-top-style: solid; border-top-color: var(--primary); }
+.ar-shape { position: absolute; left: 0; top: 0; pointer-events: none; }
+.ar-shape svg { width: 100%; height: 100%; overflow: visible; }
+.ar-shape ellipse, .ar-shape path {
+  fill: none; stroke: color-mix(in srgb, var(--light) 60%, transparent); stroke-width: 3px;
+  stroke-dasharray: 8 7; vector-effect: non-scaling-stroke;
+}
+.ar-zone[hidden], .ar-lift[hidden], .ar-player[hidden], .ar-shape[hidden] { display: none; }

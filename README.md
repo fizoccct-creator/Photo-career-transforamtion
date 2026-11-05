@@ -35,15 +35,17 @@ Everything adapts to the screen shape, so a portrait kiosk or monitor works as w
 
 ## AR mode
 
-After Start, the webcam fills the whole screen and the career cards float in 3D along the bottom. They tilt toward your finger and turn as you move your head, so you can look around them. Timings and the effect strength are at the top of `public/ar.js`.
+After Start, the webcam fills the whole screen and the career cards float in 3D along the bottom. They tilt toward your finger and turn as you move your head, so you can look around them.
 
-- **Point** your index finger at a card to hover it, or **pinch** (thumb + index finger) to pick it up and carry it.
-- **Hold for 3 seconds.** A progress line runs around the card. Letting go or moving away resets it.
+- **Stand in the frame, waist up.** A dashed frame in the middle of the screen marks where to stand, with a head-and-shoulders outline for a medium shot (waist up in the photo). Only someone inside it, at medium-shot distance, can play. The banner tells people to step closer, step back or move into the frame.
+- **One player at a time.** The closest face in the frame becomes the player and gets a "Player" outline. Only that person's hand works; other people's hands are ignored.
+- **Point** your index finger at a card for a moment. A progress line runs around it, then the card sticks to your finger.
+- **Lift it up** above the line and keep it there for a moment to choose it. A card that stays in the bottom area is never chosen. If your hand leaves the camera, the card goes back.
 - The card is chosen, you get a moment to lower your hand, then a **5-second countdown** takes the photo and the AI transforms it.
-- The mouse works as a stand-in hand (move = point, press and hold = pinch).
+- The mouse works as a stand-in finger (move = point).
 - "Use classic mode" switches to the click-a-card version.
 
-Hand tracking uses Google MediaPipe in the browser, loaded from a CDN, so the device needs internet access. Settings like the hold time (`HOLD_MS`) are at the top of `public/ar.js`.
+Hand tracking uses Google MediaPipe in the browser, loaded from a CDN, so the device needs internet access. Settings like the pick-up time (`GRAB_MS`), the lift time (`CONFIRM_MS`), the stand zone size (`ZONE_WIDTH`) and the medium-shot distance (`SHOT_MIN`, `SHOT_MAX`) are at the top of `public/ar.js`. Tip: once you find the spot where someone is waist up in the photo, mark it with a floor sticker.
 
 ## Choose the AI
 
@@ -78,7 +80,7 @@ Add an entry to [`occupations.json`](occupations.json). No code changes needed:
 
 - `server.js`: web server and AI provider calls (`/api/occupations`, `/api/transform`)
 - `occupations.json`: the career cards
-- `public/ar.js`: AR mode (hand tracking, pick up and hold a card, countdown photo)
+- `public/ar.js`: AR mode (stand zone, one-player lock, point and lift a card, countdown photo)
 - `public/app.js`: screens, classic mode, transformation and download
 - `share.js`: QR download (stores photos locally or in online storage)
 - `public/frame.js`: draws the downloaded photo from the brand template
