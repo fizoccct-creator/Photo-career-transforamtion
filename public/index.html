@@ -30,6 +30,7 @@
         <button id="startBtn" class="btn primary start" disabled>▶ Start</button>
         <button id="homeClassicBtn" class="btn ghost small" disabled>🃏 Classic mode (no hand tracking)</button>
       </div>
+      <a href="/setup.html" class="setup-link" title="Booth setup: AI and API key">⚙️ Setup</a>
     </section>
 
     <!-- AR: full-screen camera, pick up a card with your hand -->
@@ -121,6 +122,8 @@
   </main>
 
   <div id="toast" class="toast" hidden></div>
+  <!-- For staff: shown on the home and result screens when the AI account has run out of credit -->
+  <div id="staffNote" class="staff-note" hidden></div>
   <script src="app.js" type="module"></script>
 </body>
 </html>

@@ -5,6 +5,14 @@ import { loadTemplate, applyTheme, renderFrame } from './frame.js';
 const $ = (s) => document.querySelector(s);
 const state = { occupations: [], selected: null, photo: null, result: null, stream: null, mode: 'ar', orientation: 'portrait', template: null };
 
+// ---------- Staff note: AI credit ran out ----------
+const BILLING = { openai: 'platform.openai.com → Settings → Billing', gemini: 'aistudio.google.com → Billing' };
+function setCreditOut(out, provider) {
+  const n = $('#staffNote');
+  n.hidden = !out;
+  if (out) n.textContent = `⚠️ Staff: the AI credit has run out, so photos are not transformed (players get their normal photo in the frame). Add credit at ${BILLING[provider] || 'your AI account'}.`;
+}
+
 // ---------- Screens ----------
 function show(name) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${name}`));
@@ -16,18 +24,20 @@ function show(name) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function toast(msg) {
+function toast(msg, ms = 6000) {
   const t = $('#toast');
   t.textContent = msg; t.hidden = false;
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => (t.hidden = true), 6000);
+  toast.timer = setTimeout(() => (t.hidden = true), ms);
 }
 
 // ---------- Step 1: cards ----------
 async function loadOccupations() {
   const res = await fetch('/api/occupations');
   const data = await res.json();
+  if (data.needsSetup) { location.href = '/setup.html'; return new Promise(() => {}); } // no API key yet
   state.occupations = data.occupations;
+  setCreditOut(data.creditOut, data.provider);
   $('#providerBadge').textContent = data.provider === 'demo' ? 'Demo mode (no AI)' : `AI: ${data.provider}`;
 }
 
@@ -165,14 +175,17 @@ async function transform() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ occupationId: state.selected.id, image: state.photo, orientation: state.orientation }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ error: `the server didn't answer properly (error ${res.status})` }));
     if (!res.ok) throw new Error(data.error || 'Transformation failed');
     state.result = data.image;
+    setCreditOut(data.fallback === 'no-credit', data.provider); // no credit: data.image is the normal photo
     await renderResult();
     show('result');
     shareResult();
   } catch (err) {
-    toast(err.message);
+    // Say clearly why there's no photo (the booth goes back to the cards so the player can retry).
+    console.error('Transformation failed:', err);
+    toast(`⚠️ Couldn't make your photo: ${err.message}. Please try again.`, 12000);
     show(state.mode === 'ar' ? 'ar' : 'camera');
   } finally {
     clearInterval(rotate);

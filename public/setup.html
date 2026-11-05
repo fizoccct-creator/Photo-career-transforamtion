@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Booth setup · Career Transformation</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .setup { max-width: 620px; margin: 0 auto; padding: 32px 20px 60px; text-align: left; }
+    .setup h1 { margin: 0 0 6px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+    .setup .sub { color: var(--muted); margin: 0 0 24px; }
+    .panel { background: var(--panel); border: 1px solid color-mix(in srgb, var(--light) 14%, transparent); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 18px; }
+    .panel h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .choices { display: grid; gap: 10px; }
+    .choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; cursor: pointer;
+      border: 2px solid color-mix(in srgb, var(--light) 16%, transparent); }
+    .choice:has(input:checked) { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+    .choice input { margin-top: 4px; accent-color: var(--primary); }
+    .choice b { display: block; }
+    .choice small { color: var(--muted); }
+    label.field { display: block; font-weight: 700; margin: 14px 0 6px; }
+    .row { display: flex; gap: 8px; }
+    input[type=password], input[type=text] { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; font-size: 1rem;
+      border: 1px solid color-mix(in srgb, var(--light) 25%, transparent); background: color-mix(in srgb, var(--dark) 35%, transparent); color: var(--light); }
+    input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 0; }
+    .hint a { color: var(--primary); }
+    .saved { color: #4ade80; }
+    details summary { cursor: pointer; color: var(--muted); margin-top: 14px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    .msg { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; font-weight: 600; }
+    .msg.ok { background: color-mix(in srgb, #22c55e 22%, transparent); }
+    .msg.err { background: color-mix(in srgb, #ef4444 25%, transparent); }
+  </style>
+</head>
+<body>
+  <main class="setup">
+    <h1>⚙️ Booth setup</h1>
+    <p class="sub">Choose the AI and paste your API key. It's saved on this computer only and never shown to players.</p>
+
+    <form id="form" autocomplete="off">
+      <section class="panel">
+        <h2>1. Which AI transforms the photos?</h2>
+        <div class="choices">
+          <label class="choice"><input type="radio" name="provider" value="openai"><span><b>OpenAI</b><small>Best results. Needs an OpenAI API key.</small></span></label>
+          <label class="choice"><input type="radio" name="provider" value="gemini"><span><b>Google Gemini</b><small>Needs a Gemini API key.</small></span></label>
+          <label class="choice"><input type="radio" name="provider" value="demo"><span><b>Demo mode</b><small>No AI and no key: shows your own photo in the frame. For testing.</small></span></label>
+        </div>
+      </section>
+
+      <section class="panel" data-for="openai">
+        <h2>2. OpenAI API key</h2>
+        <div class="row"><input id="openaiKey" type="password" placeholder="sk-…" spellcheck="false"><button type="button" class="btn ghost small" data-show="openaiKey">Show</button></div>
+        <p class="hint" id="openaiSaved"></p>
+        <p class="hint">Get one at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>, then paste it here.</p>
+        <details><summary>Model (advanced)</summary>
+          <label class="field" for="openaiModel">OpenAI image model</label>
+          <input id="openaiModel" type="text" spellcheck="false">
+        </details>
+      </section>
+
+      <section class="panel" data-for="gemini">
+        <h2>2. Gemini API key</h2>
+        <div class="row"><input id="geminiKey" type="password" placeholder="AIza…" spellcheck="false"><button type="button" class="btn ghost small" data-show="geminiKey">Show</button></div>
+        <p class="hint" id="geminiSaved"></p>
+        <p class="hint">Get one at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>, then paste it here.</p>
+        <details><summary>Model (advanced)</summary>
+          <label class="field" for="geminiModel">Gemini image model</label>
+          <input id="geminiModel" type="text" spellcheck="false">
+        </details>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="testBtn" class="btn ghost">🔌 Test key</button>
+        <button type="submit" id="saveBtn" class="btn primary">💾 Save</button>
+        <a href="/" id="boothBtn" class="btn ghost">▶ Open the booth</a>
+      </div>
+      <p id="msg" class="msg" hidden></p>
+    </form>
+  </main>
+
+  <script type="module">
+    const $ = (s) => document.querySelector(s);
+    const form = $('#form');
+    let current = null;
+
+    const chosen = () => form.provider.value;
+    const say = (text, ok = true) => { const m = $('#msg'); m.textContent = text; m.className = `msg ${ok ? 'ok' : 'err'}`; m.hidden = false; };
+
+    function render(s) {
+      current = s;
+      form.provider.value = s.provider;
+      for (const p of ['openai', 'gemini']) {
+        $(`#${p}Model`).value = s[p].model;
+        $(`#${p}Key`).value = '';
+        $(`#${p}Key`).placeholder = s[p].keySet ? 'Saved. Paste a new key to replace it' : (p === 'openai' ? 'sk-…' : 'AIza…');
+        $(`#${p}Saved`).innerHTML = s[p].keySet ? `<span class="saved">✓ Key saved (${s[p].keyHint})</span>` : 'No key saved yet.';
+      }
+      update();
+      if (s.creditOut) say('⚠️ The AI credit has run out, so photos are not being transformed. Add credit to your account, then press Save to try again.', false);
+    }
+
+    function update() {
+      const p = chosen();
+      document.querySelectorAll('[data-for]').forEach((el) => (el.hidden = el.dataset.for !== p));
+      $('#testBtn').hidden = p === 'demo';
+    }
+
+    async function api(url, body) {
+      const res = await fetch(url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      return data;
+    }
+
+    const values = () => ({
+      provider: chosen(),
+      openaiKey: $('#openaiKey').value.trim(), openaiModel: $('#openaiModel').value.trim(),
+      geminiKey: $('#geminiKey').value.trim(), geminiModel: $('#geminiModel').value.trim(),
+    });
+
+    form.addEventListener('change', (e) => { if (e.target.name === 'provider') update(); });
+    document.querySelectorAll('[data-show]').forEach((b) => b.addEventListener('click', () => {
+      const input = $(`#${b.dataset.show}`);
+      input.type = input.type === 'password' ? 'text' : 'password';
+      b.textContent = input.type === 'password' ? 'Show' : 'Hide';
+    }));
+
+    $('#testBtn').addEventListener('click', async () => {
+      const p = chosen(), v = values();
+      say('Testing…');
+      try {
+        const r = await api('/api/settings/test', { provider: p, key: v[`${p}Key`], model: v[`${p}Model`] });
+        say(`✅ ${r.message}`);
+      } catch (e) { say(`❌ ${e.message}`, false); }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = values();
+      const keyName = `${v.provider}Key`;
+      if (v.provider !== 'demo' && !v[keyName] && !current[v.provider].keySet) {
+        return say('Paste the API key first.', false);
+      }
+      try {
+        render(await api('/api/settings', v));
+        say(v.provider === 'demo' ? '✅ Saved. The booth runs in demo mode.' : '✅ Saved. The booth is ready: press "Open the booth".');
+      } catch (err) { say(`❌ ${err.message}`, false); }
+    });
+
+    api('/api/settings').then(render).catch((e) => say(`❌ ${e.message}`, false));
+  </script>
+</body>
+</html>

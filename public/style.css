@@ -239,7 +239,8 @@ body[data-screen="home"] .topbar, body[data-screen="ar"] .topbar { display: none
 @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
 
 .toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; /* above the full-screen camera */
+  font-weight: 700; text-align: center;
   background: #dc2626; padding: 12px 20px; border-radius: 12px; max-width: 90vw; box-shadow: 0 8px 24px #0008;
 }
 
@@ -290,33 +291,55 @@ body[data-screen="home"] .topbar, body[data-screen="ar"] .topbar { display: none
 /* Stand zone: where the player must stand */
 .ar-zone {
   position: absolute; pointer-events: none;
-  border: 3px dashed color-mix(in srgb, var(--light) 55%, transparent); border-radius: 28px;
-  background: color-mix(in srgb, var(--dark) 18%, transparent); transition: border-color .3s, background .3s;
+  border: 2px dashed color-mix(in srgb, var(--light) 28%, transparent); border-radius: 28px;
+  background: transparent; transition: border-color .3s;
   overflow: hidden;
 }
 .ar-zone span {
   position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
-  font-weight: 800; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
-  color: var(--light); background: color-mix(in srgb, var(--dark) 70%, transparent); padding: 4px 12px; border-radius: 99px;
+  font-weight: 700; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap;
+  color: color-mix(in srgb, var(--light) 75%, transparent); background: color-mix(in srgb, var(--dark) 30%, transparent); padding: 3px 10px; border-radius: 99px;
 }
-.ar-zone.occupied { border-style: solid; border-color: var(--primary); background: transparent; }
+.ar-zone.occupied { border-style: solid; border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
 .ar-zone.occupied span { opacity: 0; }
 
 /* Line the carried card has to be lifted above */
 .ar-lift {
   position: absolute; left: 0; right: 0; top: 0; height: 0; pointer-events: none; z-index: 1;
-  border-top: 3px dashed var(--light);
+  border-top: 2px dashed color-mix(in srgb, var(--light) 40%, transparent);
 }
 .ar-lift span {
   position: absolute; left: 50%; top: -12px; transform: translate(-50%, -100%);
-  background: var(--secondary); border: 2px solid var(--primary); color: var(--light);
-  font-weight: 700; font-size: .85rem; padding: 4px 14px; border-radius: 99px; white-space: nowrap;
+  background: color-mix(in srgb, var(--secondary) 50%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  color: color-mix(in srgb, var(--light) 85%, transparent);
+  font-weight: 600; font-size: .78rem; padding: 3px 12px; border-radius: 99px; white-space: nowrap;
 }
-.ar-lift.reached { border-top-style: solid; border-top-color: var(--primary); }
+.ar-lift.reached { border-top-style: solid; border-top-color: color-mix(in srgb, var(--primary) 70%, transparent); }
 .ar-shape { position: absolute; left: 0; top: 0; pointer-events: none; }
 .ar-shape svg { width: 100%; height: 100%; overflow: visible; }
 .ar-shape ellipse, .ar-shape path {
-  fill: none; stroke: color-mix(in srgb, var(--light) 60%, transparent); stroke-width: 3px;
+  fill: none; stroke: color-mix(in srgb, var(--light) 28%, transparent); stroke-width: 2px;
   stroke-dasharray: 8 7; vector-effect: non-scaling-stroke;
 }
 .ar-zone[hidden], .ar-lift[hidden], .ar-player[hidden], .ar-shape[hidden] { display: none; }
+
+/* Small link to the Setup page (API key), bottom corner of the home screen */
+.setup-link {
+  position: absolute; right: 16px; bottom: 14px; z-index: 2; color: color-mix(in srgb, var(--light) 45%, transparent);
+  font-size: .8rem; text-decoration: none; padding: 6px 10px; border-radius: 99px;
+}
+.setup-link:hover { color: var(--light); background: color-mix(in srgb, var(--light) 10%, transparent); }
+
+/* Note for staff when the AI credit has run out (hidden on the camera screens) */
+.staff-note {
+  position: fixed; left: 12px; bottom: 12px; z-index: 1000; max-width: min(460px, 80vw);
+  background: color-mix(in srgb, #b45309 88%, transparent); color: #fff; font-size: .8rem; line-height: 1.35;
+  padding: 8px 12px; border-radius: 10px; box-shadow: 0 4px 14px #0006;
+}
+body[data-screen="ar"] .staff-note, body[data-screen="camera"] .staff-note { display: none; }
+/* On the result page, sit below the buttons instead of floating over them */
+body[data-screen="result"] .staff-note, body[data-screen="loading"] .staff-note, body[data-screen="cards"] .staff-note {
+  position: static; display: block; margin: 8px auto 20px; width: fit-content;
+}
+/* On the home screen, sit at the top, clear of the Start buttons */
+body[data-screen="home"] .staff-note { top: 12px; bottom: auto; left: 50%; transform: translateX(-50%); }

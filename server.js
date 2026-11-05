@@ -5,13 +5,19 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
 import { createShare, serveLocalShare, shareStatus } from './share.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-if (fs.existsSync(path.join(ROOT, '.env'))) process.loadEnvFile(path.join(ROOT, '.env'));
+const ENV_FILE = path.join(ROOT, '.env');
+// First run on a new computer: start from the example settings.
+if (!fs.existsSync(ENV_FILE) && fs.existsSync(path.join(ROOT, '.env.example'))) {
+  fs.copyFileSync(path.join(ROOT, '.env.example'), ENV_FILE);
+}
+if (fs.existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
 
 const PORT = Number(process.env.PORT) || 3000;
-const PROVIDER = (process.env.AI_PROVIDER || 'demo').toLowerCase();
+const provider = () => (process.env.AI_PROVIDER || 'demo').toLowerCase(); // can change from the Setup page
 const MAX_BODY = 15 * 1024 * 1024; // 15 MB
 
 const loadOccupations = () =>
@@ -27,6 +33,21 @@ function buildPrompt(occ, orientation) {
 }
 
 // ---------- AI providers ----------
+// "Out of credit" errors (no money left on the AI account). The booth then still gives the
+// player their normal photo in the frame, and shows staff a note to top up.
+const credit = { out: false, provider: '', since: 0 };
+function isNoCredit(status, error = {}) {
+  if (status === 402) return true;
+  const text = `${error.code || ''} ${error.type || ''} ${error.status || ''} ${error.message || ''}`;
+  if (/rate limit|per minute|requests per|too many requests/i.test(text)) return false; // just busy: not about credit
+  return /insufficient_quota|billing|quota|credit|RESOURCE_EXHAUSTED|payment/i.test(text);
+}
+function aiError(message, status, error) {
+  const e = new Error(message);
+  e.noCredit = isNoCredit(status, error);
+  return e;
+}
+
 async function transformWithGemini(imageB64, mime, prompt, orientation) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY is not set in .env');
@@ -48,7 +69,7 @@ async function transformWithGemini(imageB64, mime, prompt, orientation) {
   const json = await res.json();
   if (!res.ok) {
     const hint = res.status === 404 ? ` (model "${model}" not found: run "npm run models" and set GEMINI_MODEL in .env)` : '';
-    throw new Error((json.error?.message || `Gemini error ${res.status}`) + hint);
+    throw aiError((json.error?.message || `Gemini error ${res.status}`) + hint, res.status, json.error);
   }
   const parts = json.candidates?.[0]?.content?.parts || [];
   const img = parts.find((p) => p.inlineData || p.inline_data);
@@ -70,10 +91,10 @@ async function transformWithOpenAI(imageB64, mime, prompt, orientation) {
     headers: { Authorization: `Bearer ${key}` },
     body: form,
   });
-  const json = await res.json();
+  const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const hint = /model/i.test(json.error?.message || '') ? ' (run "npm run models" and set OPENAI_MODEL in .env)' : '';
-    throw new Error((json.error?.message || `OpenAI error ${res.status}`) + hint);
+    throw aiError((json.error?.message || `OpenAI error ${res.status}`) + hint, res.status, json.error);
   }
   const b64 = json.data?.[0]?.b64_json;
   if (!b64) throw new Error('The AI did not return an image. Try another photo.');
@@ -162,15 +183,103 @@ function loadDesign() {
   return t;
 }
 
+// ---------- Setup page (API key and AI choice) ----------
+// Settings are saved to .env. Only this computer can read or change them: the booth may also be
+// reachable from phones on the same Wi-Fi (QR download), and they must never see or change the key.
+const DEFAULT_MODELS = { OPENAI_MODEL: 'gpt-image-2.5-sunburst', GEMINI_MODEL: 'gemini-3.1-flash-image' };
+const KEY_FOR = { openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY' };
+
+const isLocal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+const needsSetup = () => !!KEY_FOR[provider()] && !process.env[KEY_FOR[provider()]];
+const keyHint = (k) => (k ? `${k.slice(0, 3)}…${k.slice(-4)}` : '');
+
+function settingsView() {
+  const e = process.env;
+  return {
+    provider: provider(), needsSetup: needsSetup(), creditOut: credit.out && credit.provider === provider(),
+    openai: { keySet: !!e.OPENAI_API_KEY, keyHint: keyHint(e.OPENAI_API_KEY), model: e.OPENAI_MODEL || DEFAULT_MODELS.OPENAI_MODEL },
+    gemini: { keySet: !!e.GEMINI_API_KEY, keyHint: keyHint(e.GEMINI_API_KEY), model: e.GEMINI_MODEL || DEFAULT_MODELS.GEMINI_MODEL },
+  };
+}
+
+// Write values into .env, keeping its comments and other settings.
+function saveSettings(values) {
+  let lines = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8').split(/\r?\n/) : [];
+  for (const [k, v] of Object.entries(values)) {
+    const i = lines.findIndex((l) => l.startsWith(`${k}=`));
+    if (i >= 0) lines[i] = `${k}=${v}`; else lines.push(`${k}=${v}`);
+    process.env[k] = v;
+  }
+  fs.writeFileSync(ENV_FILE, lines.join('\n'));
+}
+
+function cleanSettings(body) {
+  const out = {};
+  const p = String(body.provider || '').toLowerCase();
+  if (p) {
+    if (!['openai', 'gemini', 'demo'].includes(p)) throw new Error('Choose OpenAI, Gemini or Demo');
+    out.AI_PROVIDER = p;
+  }
+  const fields = { openaiKey: 'OPENAI_API_KEY', openaiModel: 'OPENAI_MODEL', geminiKey: 'GEMINI_API_KEY', geminiModel: 'GEMINI_MODEL' };
+  for (const [field, key] of Object.entries(fields)) {
+    const v = String(body[field] ?? '').trim();
+    if (!v) continue; // empty = keep what is saved
+    if (/[\s"'#]/.test(v) || v.length > 300) throw new Error(`That ${field.includes('Key') ? 'API key' : 'model name'} doesn't look right. Paste it again.`);
+    out[key] = v;
+  }
+  return out;
+}
+
+// Check a key works (and can see the model) without making an image.
+async function testKey(p, key, model) {
+  if (p === 'openai') {
+    const r = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(model)}`, { headers: { Authorization: `Bearer ${key}` } });
+    if (r.ok) return 'The OpenAI key works.';
+    const msg = (await r.json().catch(() => ({}))).error?.message || `OpenAI error ${r.status}`;
+    if (r.status === 404) return `The key works, but it can't use the model "${model}". Check the model name.`;
+    throw new Error(r.status === 401 ? 'OpenAI says this API key is wrong. Copy it again from platform.openai.com/api-keys.' : msg);
+  }
+  if (p === 'gemini') {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}`, { headers: { 'x-goog-api-key': key } });
+    if (r.ok) return 'The Gemini key works.';
+    const msg = (await r.json().catch(() => ({}))).error?.message || `Gemini error ${r.status}`;
+    throw new Error(r.status === 404 ? `The key works, but the model "${model}" wasn't found.` : msg);
+  }
+  return 'Demo mode needs no key.';
+}
+
+async function handleSettings(req, res) {
+  if (!isLocal(req)) return sendJSON(res, 403, { error: 'Setup only works on the booth computer itself (http://localhost).' }), true;
+  if (req.method === 'GET' && req.url === '/api/settings') return sendJSON(res, 200, settingsView()), true;
+  if (req.method === 'POST' && req.url === '/api/settings') {
+    saveSettings(cleanSettings(JSON.parse(await readBody(req))));
+    credit.out = false; // new key or AI: try transforming again
+    console.log(`Settings saved (AI provider: ${provider()})`);
+    return sendJSON(res, 200, settingsView()), true;
+  }
+  if (req.method === 'POST' && req.url === '/api/settings/test') {
+    const body = JSON.parse(await readBody(req));
+    const p = String(body.provider || provider()).toLowerCase();
+    const typed = cleanSettings({ openaiKey: body.key && p === 'openai' ? body.key : '', geminiKey: body.key && p === 'gemini' ? body.key : '' });
+    const key = typed[KEY_FOR[p]] || process.env[KEY_FOR[p]];
+    if (KEY_FOR[p] && !key) throw new Error('Paste an API key first.');
+    const model = String(body.model || '').trim() || settingsView()[p]?.model;
+    return sendJSON(res, 200, { message: await testKey(p, key, model) }), true;
+  }
+  return false;
+}
+
 // ---------- Routes ----------
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'GET' && req.url === '/api/occupations') {
       const list = loadOccupations().map(({ prompt, ...pub }) => pub);
-      return sendJSON(res, 200, { provider: PROVIDER, share: shareStatus(), occupations: list });
+      return sendJSON(res, 200, { provider: provider(), needsSetup: needsSetup(), creditOut: credit.out && credit.provider === provider(), share: shareStatus(), occupations: list });
     }
 
     if (req.method === 'GET' && req.url === '/api/design') return sendJSON(res, 200, loadDesign());
+    if (req.url.startsWith('/api/settings') && await handleSettings(req, res)) return;
+    if (req.url === '/setup.html' && !isLocal(req)) return sendJSON(res, 403, { error: 'Setup only works on the booth computer itself.' });
 
     if (req.method === 'POST' && req.url === '/api/transform') {
       const { occupationId, image, orientation } = JSON.parse(await readBody(req));
@@ -179,10 +288,24 @@ const server = http.createServer(async (req, res) => {
       const m = /^data:(image\/[a-z+]+);base64,(.+)$/.exec(image || '');
       if (!m) return sendJSON(res, 400, { error: 'Invalid image' });
 
+      const PROVIDER = provider();
       const run = providers[PROVIDER];
       if (!run) return sendJSON(res, 500, { error: `Unknown AI_PROVIDER "${PROVIDER}"` });
       const orient = orientation === 'landscape' ? 'landscape' : 'portrait';
-      const out = await run(m[2], m[1], buildPrompt(occ, orient), orient);
+      const started = Date.now();
+      console.log(`Transforming photo into ${occ.title} with ${PROVIDER}…`);
+      let out;
+      try {
+        out = await run(m[2], m[1], buildPrompt(occ, orient), orient);
+      } catch (err) {
+        if (!err.noCredit) throw err;
+        // Out of AI credit: give the player their own photo in the frame instead of nothing.
+        if (!credit.out) console.log(`\n⚠️  ${PROVIDER} AI credit has run out (${err.message}).\n    Players now get their normal photo in the frame. Add credit, then the booth transforms photos again.\n`);
+        Object.assign(credit, { out: true, provider: PROVIDER, since: Date.now() });
+        return sendJSON(res, 200, { image: image, provider: PROVIDER, fallback: 'no-credit' });
+      }
+      credit.out = false;
+      console.log(`  done in ${((Date.now() - started) / 1000).toFixed(1)} s`);
       return sendJSON(res, 200, { image: `data:${out.mime};base64,${out.b64}`, provider: PROVIDER });
     }
 
@@ -204,12 +327,30 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET') return serveStatic(req, res);
     sendJSON(res, 405, { error: 'Method not allowed' });
   } catch (err) {
-    console.error(err);
+    console.error(`Error on ${req.method} ${req.url}: ${err.message}`);
     sendJSON(res, 500, { error: err.message || 'Something went wrong' });
   }
 });
 
+// Open the booth in the browser (the Start Booth launchers set OPEN_BROWSER=1).
+function openBrowser(url) {
+  if (process.env.OPEN_BROWSER !== '1') return;
+  const [cmd, args] = process.platform === 'darwin' ? ['open', [url]]
+    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : ['xdg-open', [url]];
+  spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
+}
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`The booth is already running at http://localhost:${PORT}. Opening it.`);
+    openBrowser(`http://localhost:${PORT}`);
+    setTimeout(() => process.exit(0), 500);
+  } else throw err;
+});
+
 server.listen(PORT, () => {
   const sh = shareStatus();
-  console.log(`Career Transformation running at http://localhost:${PORT}  (AI provider: ${PROVIDER}, QR sharing: ${sh.mode}${sh.error ? ' (not set up yet)' : ''})`);
+  console.log(`Career Transformation running at http://localhost:${PORT}  (AI provider: ${provider()}, QR sharing: ${sh.mode}${sh.error ? ' (not set up yet)' : ''})`);
+  if (needsSetup()) console.log(`No API key yet: open http://localhost:${PORT}/setup.html to add it.`);
+  openBrowser(`http://localhost:${PORT}${needsSetup() ? '/setup.html' : ''}`);
 });
