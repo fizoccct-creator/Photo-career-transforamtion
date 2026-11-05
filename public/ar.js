@@ -18,6 +18,7 @@ const DROP_MS = 700;           // a carried card goes back if the hand is lost f
 const COUNTDOWN = 5;           // seconds of countdown before the photo is taken
 const READY_MS = 1500;         // pause after choosing, to lower your hand
 const CARD_RATIO = 4 / 3;      // card height / width (design your card images at 3:4, e.g. 750×1000)
+const MANY_CARDS = 10;         // more careers than this: the cards go in 2+ rows (landscape) / rows of 4 (portrait)
 const LOOK_AROUND = 1;         // strength of the head-tracked 3D effect (0 = off)
 // Stand zone: where the player has to stand to play
 const ZONE_WIDTH = 0.42;       // share of the screen width, centred (landscape screens)
@@ -102,10 +103,14 @@ function layoutSlots(snap = false) {
   const W = stage.clientWidth, H = stage.clientHeight;
   if (!W || !H || !cards.length) return;
   const portrait = stageOrientation() === 'portrait';
-  const cols = portrait ? Math.min(3, cards.length) : cards.length;
+  // Up to MANY_CARDS: one row (landscape) or rows of 3 (portrait).
+  // More: rows of 8 (landscape) or 4 (portrait), and the cards may use a bit more of the height,
+  // so they stay big enough to point at from 1-2 m away.
+  const many = cards.length > MANY_CARDS;
+  const cols = Math.min(cards.length, portrait ? (many ? 4 : 3) : (many ? 8 : cards.length));
   const rows = Math.ceil(cards.length / cols);
   let cw = Math.min(portrait ? 170 : 180, W / (cols + (portrait ? 0.9 : 1.5)));
-  const maxCardsH = H * 0.32; // keep the face area clear
+  const maxCardsH = H * (many ? 0.4 : 0.32); // keep the face area clear
   if ((cw * CARD_RATIO + 16) * rows > maxCardsH) cw = (maxCardsH / rows - 16) / CARD_RATIO;
   cw = Math.max(64, cw);
   const ch = cw * CARD_RATIO;

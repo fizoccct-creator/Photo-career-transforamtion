@@ -12,11 +12,10 @@ design/
 │
 ├── cards/                      career cards (one image per career)
 │   ├── guide-card.svg            ← size guide: 750 × 1000 px (3:4)
-│   ├── pilot.png
-│   ├── doctor.png
-│   ├── photographer.png
-│   ├── videographer.png
-│   └── graphic-designer.png
+│   ├── pilot.png                 one per career (16), named after its id in occupations.json:
+│   └── …                         doctor, photographer, videographer, graphic-designer, film-director,
+│                                 news-anchor, music-producer, fashion-designer, astronaut, chef,
+│                                 firefighter, football-player, scientist, robotics-engineer, architect
 │
 └── frames/                     the downloaded photo
     ├── guide-portrait.svg        ← layout guide, vertical 1080 × 1920

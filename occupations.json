@@ -38,5 +38,93 @@
     "color": "#9333ea",
     "tagline": "Design the world's look",
     "prompt": "a creative graphic designer in trendy smart-casual clothes holding a digital drawing tablet and stylus, in a colorful modern design studio with large monitors showing design work and mood boards on the wall"
+  },
+  {
+    "id": "film-director",
+    "title": "Film Director",
+    "emoji": "🎬",
+    "color": "#7c3aed",
+    "tagline": "Call the shots on set",
+    "prompt": "a film director in a stylish dark jacket holding a megaphone and a script, sitting in a director's chair on a busy movie set with studio lights, a camera crane and a clapperboard"
+  },
+  {
+    "id": "news-anchor",
+    "title": "News Anchor",
+    "emoji": "🎤",
+    "color": "#0284c7",
+    "tagline": "Bring the news to the world",
+    "prompt": "a professional TV news anchor in a sharp tailored suit sitting at a glossy news desk, in a modern broadcast studio with large screens showing world news graphics"
+  },
+  {
+    "id": "music-producer",
+    "title": "Music Producer",
+    "emoji": "🎧",
+    "color": "#db2777",
+    "tagline": "Make the next big hit",
+    "prompt": "a music producer and DJ wearing large studio headphones, hands on a mixing desk with glowing faders, in a recording studio with neon lights, speakers and a microphone"
+  },
+  {
+    "id": "fashion-designer",
+    "title": "Fashion Designer",
+    "emoji": "👗",
+    "color": "#e11d48",
+    "tagline": "Design what the world wears",
+    "prompt": "a fashion designer in a chic outfit with a measuring tape around the neck and a sketchbook of designs, in a bright atelier with mannequins, fabric rolls and a clothing rack"
+  },
+  {
+    "id": "astronaut",
+    "title": "Astronaut",
+    "emoji": "🚀",
+    "color": "#475569",
+    "tagline": "Explore beyond the stars",
+    "prompt": "an astronaut in a detailed white NASA-style spacesuit holding the helmet under one arm, inside a space station with a large window showing planet Earth behind"
+  },
+  {
+    "id": "chef",
+    "title": "Chef",
+    "emoji": "👨‍🍳",
+    "color": "#ea580c",
+    "tagline": "Cook up something amazing",
+    "prompt": "a professional head chef wearing a white double-breasted chef jacket and tall toque, in a busy stainless-steel restaurant kitchen with flames on the stove"
+  },
+  {
+    "id": "firefighter",
+    "title": "Firefighter",
+    "emoji": "🚒",
+    "color": "#b91c1c",
+    "tagline": "Be the hero who saves the day",
+    "prompt": "a firefighter in full protective turnout gear with reflective stripes and a helmet, standing in front of a red fire truck at a fire station"
+  },
+  {
+    "id": "football-player",
+    "title": "Football Player",
+    "emoji": "⚽",
+    "color": "#16a34a",
+    "tagline": "Score the winning goal",
+    "prompt": "a professional football (soccer) player in a team kit with a captain's armband, holding a football, on the pitch of a packed stadium under bright floodlights"
+  },
+  {
+    "id": "scientist",
+    "title": "Scientist",
+    "emoji": "🔬",
+    "color": "#0891b2",
+    "tagline": "Discover something new",
+    "prompt": "a scientist in a white lab coat and safety goggles holding a glowing test tube, in a modern laboratory with microscopes and colourful experiments"
+  },
+  {
+    "id": "robotics-engineer",
+    "title": "Robotics Engineer",
+    "emoji": "🤖",
+    "color": "#4f46e5",
+    "tagline": "Build the robots of the future",
+    "prompt": "a robotics engineer in a smart work jacket holding a tablet, next to a sleek robot arm, in a high-tech workshop with circuit boards and glowing screens"
+  },
+  {
+    "id": "architect",
+    "title": "Architect",
+    "emoji": "🏛️",
+    "color": "#a16207",
+    "tagline": "Design the cities of tomorrow",
+    "prompt": "an architect wearing a white hard hat holding rolled blueprints, with a large architectural model and a modern city skyline seen through a big office window"
   }
 ]
