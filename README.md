@@ -4,13 +4,16 @@ Pick a career card → take a selfie → AI turns you into that occupation → d
 
 ## Run it
 
+**No coding tools:** install Node.js, then double-click `Start Booth (Windows).bat` or `Start Booth (Mac).command`. The browser opens the booth, and the first time it opens the Setup page for your API key. See [`HOW-TO-RUN.md`](HOW-TO-RUN.md).
+
+**From a terminal:**
+
 ```bash
-cd career-transformation
-cp .env.example .env     # then edit .env
-npm start                # http://localhost:3000
+npm install      # once (installs the QR code library)
+npm start        # http://localhost:3000
 ```
 
-Run `npm install` once (it installs the QR code library). Needs Node 20.12+.
+Needs Node 20.12+. On the first start `.env` is created from `.env.example`.
 
 ## QR download
 
@@ -49,7 +52,7 @@ Hand tracking uses Google MediaPipe in the browser, loaded from a CDN, so the de
 
 ## Choose the AI
 
-Set `AI_PROVIDER` in `.env` (currently `openai`). Get a key at https://platform.openai.com/api-keys.
+Choose the AI and paste the API key on the **⚙️ Setup** page (`http://localhost:3000/setup.html`, also linked from the home screen). It saves them to `.env`, or you can edit `.env` yourself (`AI_PROVIDER`, `OPENAI_API_KEY`). Get a key at https://platform.openai.com/api-keys.
 
 | Value    | What it does                                           | Key needed        |
 |----------|--------------------------------------------------------|-------------------|
@@ -57,7 +60,7 @@ Set `AI_PROVIDER` in `.env` (currently `openai`). Get a key at https://platform.
 | `demo`   | Returns your own photo in the career frame (test flow) | none              |
 | `gemini` | Google Gemini image editing (`gemini-3.1-flash-image`) | `GEMINI_API_KEY`  |
 
-API keys stay on the server; the browser never sees them. Run `npm run models` to list the image models your key can use, then set `OPENAI_MODEL` / `GEMINI_MODEL` in `.env`.
+API keys stay on the server; the browser never sees them, and the Setup page only works on the booth computer itself (not from phones on the Wi-Fi). Run `npm run models` to list the image models your key can use, then set `OPENAI_MODEL` / `GEMINI_MODEL` in `.env`.
 
 ## Add more careers
 
@@ -78,7 +81,9 @@ Add an entry to [`occupations.json`](occupations.json). No code changes needed:
 
 ## Files
 
-- `server.js`: web server and AI provider calls (`/api/occupations`, `/api/transform`)
+- `server.js`: web server, AI provider calls (`/api/occupations`, `/api/transform`) and the Setup page API (`/api/settings`)
+- `public/setup.html`: Setup page (AI choice and API key)
+- `Start Booth (Windows).bat`, `Start Booth (Mac).command`: double-click launchers
 - `occupations.json`: the career cards
 - `public/ar.js`: AR mode (stand zone, one-player lock, point and lift a card, countdown photo)
 - `public/app.js`: screens, classic mode, transformation and download
