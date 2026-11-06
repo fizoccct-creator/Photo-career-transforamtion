@@ -1,0 +1,6 @@
+[
+  { "id": "business", "title": "Business", "emoji": "💼", "color": "#0f766e", "tagline": "Lead, build and make deals" },
+  { "id": "sports", "title": "Sports", "emoji": "⚽", "color": "#16a34a", "tagline": "Train hard and win" },
+  { "id": "science", "title": "Science", "emoji": "🔬", "color": "#2563eb", "tagline": "Discover, heal and explore" },
+  { "id": "creative", "title": "Creative", "emoji": "🎨", "color": "#db2777", "tagline": "Make things people love" }
+]

@@ -21,10 +21,11 @@
       <div class="home-content">
         <div class="home-logo" data-brand-name>✨ Career <span>Transformation</span></div>
         <h1>Who will you become?</h1>
-        <p class="sub">Point at a career card, lift it up, and meet your future self.</p>
+        <p class="sub">Choose a category, point at a career card, pull it down, and meet your future self.</p>
         <ol class="how">
           <li><b>🧍</b><span>Stand in the frame</span></li>
-          <li><b>☝️</b><span>Point at a card and lift it up</span></li>
+          <li><b>🗂️</b><span>Choose a category</span></li>
+          <li><b>☝️</b><span>Point at a card and pull it down</span></li>
           <li><b>📸</b><span>Smile for the camera</span></li>
         </ol>
         <button id="startBtn" class="btn primary start" disabled>▶ Start</button>
@@ -38,10 +39,13 @@
       <div id="arStage" class="ar-stage">
         <video id="arVideo" autoplay playsinline muted></video>
         <div class="no-camera-msg">📷 Waiting for camera…</div>
+        <div id="arCats" class="ar-cats" hidden></div>
         <div id="arCards"></div>
+        <button id="arCancel" class="btn ar-cancel pointable" hidden>✕ Cancel</button>
         <div id="arCursors"></div>
         <div class="ar-topbar">
           <button class="btn ghost small home-btn">✕ Home</button>
+          <div id="arTabs" class="ar-tabs" hidden></div>
           <button id="classicBtn" class="btn ghost small">🃏 Classic mode</button>
         </div>
         <div class="ar-info">
@@ -57,6 +61,7 @@
     <section id="screen-cards" class="screen">
       <h1>Who will you become?</h1>
       <p class="sub">Pick a career card. Then take a selfie and AI turns you into that person.</p>
+      <div id="catTabs" class="cat-tabs"></div>
       <div id="cardGrid" class="card-grid"></div>
       <div class="actions">
         <button id="surpriseBtn" class="btn ghost">🎲 Surprise me</button>

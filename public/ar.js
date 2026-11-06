@@ -1,9 +1,13 @@
-// AR card picker: the webcam fills the stage and the career cards float in 3D along the bottom.
+// AR card picker: the webcam fills the stage and the career cards float in 3D along the top.
 // - The player stands in the marked zone in the middle of the screen, at medium-shot distance
 //   (waist up in the photo).
-// - Point at a card with your index finger for GRAB_MS and it sticks to your finger.
-// - Lift it up above the line and keep it there for CONFIRM_MS to choose it; a card that stays
-//   in the bottom area is never chosen. Then a COUNTDOWN takes the photo.
+// - First page: point at a category (Business, Sports, …) to open it. Only that category's careers
+//   are shown; the tabs at the top switch category, "← Categories" goes back.
+// - Point at a card with ONE finger (index out, other fingers folded) for GRAB_MS and it sticks to
+//   your finger. Open your hand to let go of it.
+// - Pull it down below the line and keep it there for CONFIRM_MS to choose it; a card that stays
+//   in the top area is never chosen. Then a COUNTDOWN takes the photo.
+// - "✕ Cancel" (point at it, or click) puts a held card back, or stops the countdown.
 // - The cards react in 3D: they tilt toward your finger, and when you move your head they turn
 //   as if you're looking around them (head tracking, with the hand or mouse as a fallback).
 // - The mouse works as a stand-in finger (move = point).
@@ -13,12 +17,15 @@ import { toCroppedDataUrl, ratioFor, sleep } from './util.js';
 
 // ---- Settings you may want to tweak ----
 const GRAB_MS = 600;           // point at a card this long to pick it up
-const CONFIRM_MS = 800;        // keep the lifted card above the line this long to choose it
+const PRESS_MS = 700;          // point at a button (category, tab, cancel) this long to press it
+const CONFIRM_MS = 800;        // keep the carried card below the line this long to choose it
+const POINT_ONLY = true;       // only a pointing hand (one finger out) moves the cursor; false = any hand
 const DROP_MS = 700;           // a carried card goes back if the hand is lost for this long
 const COUNTDOWN = 5;           // seconds of countdown before the photo is taken
 const READY_MS = 1500;         // pause after choosing, to lower your hand
 const CARD_RATIO = 4 / 3;      // card height / width (design your card images at 3:4, e.g. 750×1000)
-const MANY_CARDS = 10;         // more careers than this: the cards go in 2+ rows (landscape) / rows of 4 (portrait)
+const ROW_LANDSCAPE = 8;       // cards per row along the top: horizontal screens…
+const ROW_PORTRAIT = 4;        // …and vertical screens
 const LOOK_AROUND = 1;         // strength of the head-tracked 3D effect (0 = off)
 // Stand zone: where the player has to stand to play
 const ZONE_WIDTH = 0.42;       // share of the screen width, centred (landscape screens)
@@ -37,6 +44,7 @@ const MIN_HAND = 0.35;         // and its palm is at least this many face widths
 // -----------------------------------------
 
 const GRACE_MS = 350;          // tolerate short tracking dropouts before resetting the timer
+const POSE_GRACE_MS = 250;     // a pointing finger that briefly looks open still counts
 const MP_VERSION = '0.10.14';
 const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}`;
 const HAND_MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
@@ -51,15 +59,18 @@ const banner = $('#arBanner');
 const countdownEl = $('#arCountdown');
 const flash = $('#arFlash');
 const statusEl = $('#arStatus');
+const catsEl = $('#arCats');
+const tabsEl = $('#arTabs');
+const cancelBtn = $('#arCancel');
 
 let hands = null, faces = null, visionLoading = null;
 let stream = null;
 let running = false;
 let occupations = [];
+let categories = [];        // categories that have at least one career
 let cards = [];             // { occ, el, ring, slot, pos, tilt:{x,y}, lift }
 let onCaptured = () => {};
 let size = { cw: 100, ch: 133 };
-const BOTTOM_PAD = 28;
 
 const ui = {
   locked: false,
@@ -74,12 +85,20 @@ const ui = {
   faces: [],                       // every face seen this frame (to tell whose hand is whose)
   zoneHint: 'none',                // why nobody is playing yet: none | far | near | side
   sway: 0,                         // extra tilt from moving a held card
+  page: 'categories',              // categories | cards
+  category: null,                  // open category id
+  hot: null, hotDone: null,        // button being pointed at: { el, start, last }; button just pressed
+  session: 0,                      // bumped by Cancel to stop a running countdown
+  captured: false,                 // photo taken: nothing left to cancel
+  note: null,                      // short message shown in the banner: { text, until }
+  pose: { last: -1e9 },            // last time the player's hand made a pointing pose
+  openHand: false,                 // the player's hand is visible but not pointing
 };
 
 // ---------- Setup ----------
-function buildCards() {
+function buildCards(list) {
   cardsLayer.innerHTML = '';
-  cards = occupations.map((occ, i) => {
+  cards = list.map((occ, i) => {
     const el = document.createElement('div');
     el.className = 'ar-card' + (occ.cardImage ? ' has-image' : '');
     el.innerHTML = `
@@ -94,23 +113,65 @@ function buildCards() {
     return { occ, el, i, ring: el.querySelector('.ring rect'), slot: { x: 0, y: 0 }, pos: { x: 0, y: 0 }, tilt: { x: 0, y: 0 }, lift: 0 };
   });
   layoutSlots(true);
+  for (const c of cards) c.pos.y = -size.ch; // slide in from the top
+}
+
+// ---------- Pages: categories → careers of one category ----------
+function buildCategoryUI() {
+  catsEl.innerHTML = ''; tabsEl.innerHTML = '';
+  const button = (cls, html, onPress) => {
+    const b = document.createElement('button');
+    b.className = `pointable ${cls}`; b.innerHTML = html;
+    b.addEventListener('click', onPress);
+    return b;
+  };
+  tabsEl.append(button('ar-tab back', '← Categories', showCategories));
+  for (const cat of categories) {
+    const n = occupations.filter((o) => o.category === cat.id).length;
+    const tile = button('ar-cat', `<span class="emoji">${cat.emoji}</span><span class="title">${cat.title}</span><span class="count">${n} careers</span>`, () => openCategory(cat.id));
+    tile.style.setProperty('--c', cat.color || 'var(--secondary)');
+    tile.dataset.title = cat.title;
+    catsEl.append(tile);
+    const tab = button('ar-tab', `${cat.emoji} ${cat.title}`, () => openCategory(cat.id));
+    tab.dataset.cat = cat.id; tab.dataset.title = cat.title;
+    tabsEl.append(tab);
+  }
+}
+
+function showCategories() {
+  if (ui.locked) return;
+  if (!categories.length) return openCategory(null); // no categories set up: show every career
+  resetHold();
+  ui.page = 'categories'; ui.category = null;
+  cards = []; cardsLayer.innerHTML = '';
+  catsEl.hidden = false; tabsEl.hidden = true;
+}
+
+function openCategory(id) {
+  if (ui.locked) return;
+  resetHold();
+  ui.page = 'cards'; ui.category = id;
+  catsEl.hidden = true; tabsEl.hidden = !categories.length; // show the tabs first: the cards go under them
+  buildCards(id ? occupations.filter((o) => o.category === id) : occupations);
+  for (const t of tabsEl.children) t.classList.toggle('active', t.dataset.cat === id);
+}
+
+function resetHold() {
+  Object.assign(ui, { grab: null, hoverCard: null, confirmStart: 0, hot: null, sway: 0 });
 }
 
 export const stageOrientation = () => (stage.clientWidth >= stage.clientHeight ? 'landscape' : 'portrait');
 
-// Horizontal screen: one row along the bottom. Vertical screen: rows of 3 along the bottom.
+// Cards sit along the top, under the category tabs: rows of ROW_LANDSCAPE (horizontal screens)
+// or ROW_PORTRAIT (vertical screens). The player reaches up to point, then pulls a card down.
 function layoutSlots(snap = false) {
   const W = stage.clientWidth, H = stage.clientHeight;
   if (!W || !H || !cards.length) return;
   const portrait = stageOrientation() === 'portrait';
-  // Up to MANY_CARDS: one row (landscape) or rows of 3 (portrait).
-  // More: rows of 8 (landscape) or 4 (portrait), and the cards may use a bit more of the height,
-  // so they stay big enough to point at from 1-2 m away.
-  const many = cards.length > MANY_CARDS;
-  const cols = Math.min(cards.length, portrait ? (many ? 4 : 3) : (many ? 8 : cards.length));
+  const cols = Math.min(cards.length, portrait ? ROW_PORTRAIT : ROW_LANDSCAPE);
   const rows = Math.ceil(cards.length / cols);
   let cw = Math.min(portrait ? 170 : 180, W / (cols + (portrait ? 0.9 : 1.5)));
-  const maxCardsH = H * (many ? 0.4 : 0.32); // keep the face area clear
+  const maxCardsH = H * (rows > 1 ? 0.4 : 0.32); // leave room to pull a card down
   if ((cw * CARD_RATIO + 16) * rows > maxCardsH) cw = (maxCardsH / rows - 16) / CARD_RATIO;
   cw = Math.max(64, cw);
   const ch = cw * CARD_RATIO;
@@ -120,11 +181,18 @@ function layoutSlots(snap = false) {
     const gap = (W - cw * inRow) / (inRow + 1);
     c.el.style.width = `${cw}px`; c.el.style.height = `${ch}px`;
     c.el.style.setProperty('--cw', `${cw}px`);
-    const fromBottom = rows - 1 - row;
-    c.slot = { x: gap + col * (cw + gap) + cw / 2, y: H - BOTTOM_PAD - ch / 2 - fromBottom * (ch + 16) };
+    c.slot = { x: gap + col * (cw + gap) + cw / 2, y: trayTop() + ch / 2 + row * (ch + 16) };
     if (snap) c.pos = { ...c.slot };
   });
 }
+
+// Top of the card area: just under the buttons and category tabs.
+function trayTop() {
+  const s = stage.getBoundingClientRect();
+  const bars = [stage.querySelector('.ar-topbar'), tabsEl].filter((e) => e && !e.hidden && e.offsetHeight);
+  return Math.max(70, ...bars.map((e) => e.getBoundingClientRect().bottom - s.top)) + 22;
+}
+const trayBottom = () => Math.max(...cards.map((c) => c.slot.y)) + size.ch / 2;
 
 new ResizeObserver(() => layoutSlots()).observe(stage);
 
@@ -149,14 +217,17 @@ async function loadVision() {
 // Start loading the tracking models early (e.g. while the home screen is showing).
 export function preloadHands() { loadVision().catch(() => {}); }
 
-export async function startAR(list, capturedCallback) {
+export async function startAR(list, cats, capturedCallback) {
   occupations = list;
+  categories = (cats || []).filter((cat) => list.some((o) => o.category === cat.id));
   onCaptured = capturedCallback;
-  Object.assign(ui, { locked: false, grab: null, hoverCard: null, confirmStart: 0, smooth: {}, sway: 0, player: null, handLock: null, zoneHint: 'none' });
+  Object.assign(ui, { locked: false, captured: false, smooth: {}, player: null, handLock: null, zoneHint: 'none', hotDone: null });
+  ui.session++;
   flash.classList.remove('go');
   countdownEl.hidden = true;
-  buildCards();
-  setBanner(faces ? '🧍 Stand in the frame to play' : '☝️ Point at a card to pick it up');
+  buildCategoryUI();
+  showCategories();
+  setBanner(faces ? '🧍 Stand in the frame to play' : '☝️ Point at a category');
   if (!running) { running = true; requestAnimationFrame(loop); }
 
   if (!stream) {
@@ -269,7 +340,7 @@ function updatePlayer(all, ts) {
   }
 
   const rival = biggest(found.filter((f) => f !== match));
-  const busy = ui.grab || ui.hoverCard;
+  const busy = ui.grab || ui.hoverCard || ui.hot || ui.locked;
   if (rival && !busy && rival.w > (match ? match.w : p.w) * TAKEOVER_RATIO) {
     p.challenge ||= ts;
     if (ts - p.challenge > TAKEOVER_MS) return lock(rival);
@@ -324,13 +395,30 @@ function setHead(x, y, k) {
   ui.head.y += (Math.max(-1, Math.min(1, y)) - ui.head.y) * k;
 }
 
+// Pointing pose: index finger out; middle finger and the ring or little finger folded.
+// (3D distances from the wrist, so it still works when the finger points toward the camera.)
+export function isPointing(h, vw = 1, vh = 1) {
+  const d = (a, b) => Math.hypot((h[a].x - h[b].x) * vw, (h[a].y - h[b].y) * vh, ((h[a].z || 0) - (h[b].z || 0)) * vw);
+  const out = (tip, pip) => d(0, tip) > d(0, pip) * 1.1;   // tip further from the wrist than the middle joint
+  const folded = (tip, pip) => d(0, tip) < d(0, pip);       // tip curled back toward the palm
+  if (!out(8, 6) || !folded(12, 10)) return false;          // index out, middle folded (not a peace sign)
+  return folded(16, 14) || folded(20, 18);                   // and the ring or little finger folded too
+}
+
+// At most ONE cursor on screen: the player's pointing finger, or (with no hand) the mouse.
 function readPointers() {
   track();
   const pointers = [];
+  const now = performance.now();
   const hand = pickPlayerHand(lastHands);
-  if (hand) pointers.push({ key: 'hand', ...toStage(hand[8].x, hand[8].y) }); // index fingertip
-  if (ui.mouse.inside) pointers.push({ key: 'mouse', x: ui.mouse.x, y: ui.mouse.y });
+  const posed = hand && (!POINT_ONLY || isPointing(hand, video.videoWidth || 1, video.videoHeight || 1));
+  if (posed) ui.pose.last = now;
+  const pointing = hand && (posed || now - ui.pose.last < POSE_GRACE_MS);
+  ui.openHand = !!hand && !pointing;
+  if (pointing) pointers.push({ key: 'hand', ...toStage(hand[8].x, hand[8].y) }); // index fingertip
+  else if (ui.mouse.inside && !hand) pointers.push({ key: 'mouse', x: ui.mouse.x, y: ui.mouse.y });
 
+  for (const k of Object.keys(ui.smooth)) if (!pointers.some((p) => p.key === k)) delete ui.smooth[k];
   for (const p of pointers) {
     const s = ui.smooth[p.key] || { x: p.x, y: p.y };
     s.x += (p.x - s.x) * 0.55; s.y += (p.y - s.y) * 0.55;
@@ -359,18 +447,16 @@ shapeEl.innerHTML = `<svg viewBox="0 0 200 300" preserveAspectRatio="none">
 </svg>`;
 const liftEl = document.createElement('div');
 liftEl.className = 'ar-lift';
-liftEl.innerHTML = '<span>⬆ Lift the card above this line</span>';
+liftEl.innerHTML = '<span>⬇ Pull the card down below this line</span>';
 const playerEl = document.createElement('div');
 playerEl.className = 'ar-player';
 playerEl.innerHTML = '<span>Player</span>';
 zoneEl.prepend(shapeEl); // clipped to the stand frame
-cardsLayer.before(zoneEl, liftEl);
-cursorsLayer.before(playerEl);
+cardsLayer.before(zoneEl, liftEl, playerEl); // the player outline goes behind the cards
 
-// The carried card (its centre, where the finger is) must go above this line to be chosen.
-function liftLineY() {
-  const top = Math.min(...cards.map((c) => c.slot.y)) - size.ch / 2;
-  return Math.max(stage.clientHeight * 0.15, top - size.ch * 0.6);
+// The carried card (its centre, where the finger is) must go below this line to be chosen.
+function pullLineY() {
+  return Math.min(stage.clientHeight * 0.8, trayBottom() + size.ch * 0.6);
 }
 
 function drawGuides() {
@@ -381,10 +467,20 @@ function drawGuides() {
   zoneEl.hidden = ui.locked || !faces;
   const zw = zoneWidth() * W, zoneTop = H * 0.05;
   if (!zoneEl.hidden) {
+    // Runs behind the cards, from near the top down to just above the banner.
     zoneEl.style.left = `${(W - zw) / 2}px`; zoneEl.style.width = `${zw}px`;
-    const trayTop = Math.min(...cards.map((c) => c.slot.y)) - size.ch / 2 - 12; // down to the cards
-    zoneEl.style.top = `${zoneTop}px`; zoneEl.style.height = `${trayTop - zoneTop}px`;
+    zoneEl.style.top = `${zoneTop}px`; zoneEl.style.height = `${H - 110 - zoneTop}px`;
     zoneEl.classList.toggle('occupied', !!playing);
+  }
+
+  // Cancel: only when there is something to cancel (a card in your hand, or the countdown).
+  // It sits just under the cards, beside the stand frame, above the pull-down line.
+  cancelBtn.hidden = ui.captured || !(ui.grab || ui.locked);
+  if (!cancelBtn.hidden) {
+    const bw = cancelBtn.offsetWidth, bh = cancelBtn.offsetHeight;
+    const x = Math.min(W - bw - 16, (W + zw) / 2 + 24);
+    const y = cards.length ? Math.min(trayBottom() + 18, pullLineY() - bh - 12) : H * 0.4;
+    cancelBtn.style.left = `${x}px`; cancelBtn.style.top = `${y}px`;
   }
 
   // The outline is drawn so a face of SHOT_TARGET size at the top of the photo means waist up.
@@ -399,7 +495,7 @@ function drawGuides() {
 
   liftEl.hidden = ui.locked || !ui.grab;
   if (!liftEl.hidden) {
-    liftEl.style.transform = `translateY(${liftLineY()}px)`;
+    liftEl.style.transform = `translateY(${pullLineY()}px)`;
     liftEl.classList.toggle('reached', !!ui.confirmStart);
   }
 
@@ -419,15 +515,72 @@ function cardAt(x, y) {
     Math.abs(x - c.pos.x) < cw / 2 + pad && Math.abs(y - c.pos.y) < ch / 2 + pad) || null;
 }
 
+// ---------- Buttons you press by pointing (categories, tabs, cancel) ----------
+// Which buttons the finger can press right now.
+function pressable() {
+  if (ui.captured) return [];
+  if (ui.locked || ui.grab) return cancelBtn.hidden ? [] : [cancelBtn];
+  if (ui.page === 'categories') return [...catsEl.children];
+  return tabsEl.hidden ? [] : [...tabsEl.children].filter((t) => !t.classList.contains('active'));
+}
+
+function buttonAt(x, y, list) {
+  const s = stage.getBoundingClientRect(), pad = 10;
+  return list.find((el) => {
+    const r = el.getBoundingClientRect();
+    return x >= r.left - s.left - pad && x <= r.right - s.left + pad && y >= r.top - s.top - pad && y <= r.bottom - s.top + pad;
+  }) || null;
+}
+
+let shownHot = null;
+function updateButtons(pointers, now) {
+  const list = pressable();
+  let over = null;
+  for (const p of pointers) if ((over = buttonAt(p.x, p.y, list))) break;
+  if (ui.hotDone && over !== ui.hotDone) ui.hotDone = null; // move off a pressed button to press again
+  if (over && over === ui.hotDone) over = null;
+
+  if (over) {
+    if (ui.hot?.el !== over) ui.hot = { el: over, start: now, last: now };
+    else ui.hot.last = now;
+  } else if (ui.hot && (now - ui.hot.last > GRACE_MS || !list.includes(ui.hot.el))) ui.hot = null;
+
+  const el = ui.hot?.el || null;
+  if (shownHot && shownHot !== el) { shownHot.style.setProperty('--p', 0); shownHot.classList.remove('pointing'); }
+  shownHot = el;
+  if (!el) return;
+  const p = Math.min(1, (now - ui.hot.start) / PRESS_MS);
+  el.style.setProperty('--p', p); el.classList.add('pointing');
+  if (p >= 1) {
+    ui.hot = null; ui.hotDone = el;
+    el.style.setProperty('--p', 0); el.classList.remove('pointing'); shownHot = null;
+    el.click();
+  }
+}
+
+// Cancel: put the held card back, or stop the countdown and go back to the cards.
+cancelBtn.addEventListener('click', () => {
+  if (ui.captured) return;
+  if (ui.locked) {
+    ui.session++; // stops select() where it is
+    ui.locked = false;
+    countdownEl.hidden = true;
+    for (const c of cards) c.el.classList.remove('faded', 'chosen');
+  }
+  resetHold();
+  ui.note = { text: '↩️ Cancelled. Point at another card', until: performance.now() + 1800 };
+});
+
 // ---------- Frame loop ----------
 function loop(now = performance.now()) {
   if (!running) return;
-  const pointers = ui.locked ? [] : readPointers();
+  const pointers = ui.captured ? [] : readPointers();
   drawCursors(pointers);
   drawGuides();
+  updateButtons(pointers, now);
   let tiltPointer = null;
 
-  if (!ui.locked) {
+  if (!ui.locked && ui.page === 'cards') {
     let ring = 0, ringCard = null; // progress shown around a card: picking it up, then confirming
 
     // Carrying a card: it follows the finger; above the lift line it gets confirmed.
@@ -442,10 +595,10 @@ function loop(now = performance.now()) {
 
       if (g.lostAt && now - g.lostAt > DROP_MS) { ui.grab = null; ui.confirmStart = 0; } // hand gone: put it back
       else {
-        if (c.pos.y < liftLineY()) {
+        if (c.pos.y > pullLineY()) {
           ui.confirmStart ||= now;
           ring = Math.min(1, (now - ui.confirmStart) / CONFIRM_MS);
-        } else ui.confirmStart = 0; // still in the bottom area: not chosen
+        } else ui.confirmStart = 0; // still in the top area: not chosen
         ringCard = c;
       }
     }
@@ -454,7 +607,7 @@ function loop(now = performance.now()) {
     if (!ui.grab) {
       ui.sway *= 0.85;
       let over = null;
-      for (const p of pointers) {
+      for (const p of ui.hot ? [] : pointers) {
         const c = cardAt(p.x, p.y);
         if (c) { over = c; tiltPointer = p; ui.hoverKey = p.key; break; }
       }
@@ -471,8 +624,6 @@ function loop(now = performance.now()) {
         }
       }
     }
-    updateBanner();
-
     for (const c of cards) {
       if (ui.grab?.card !== c) {
         c.pos.x += (c.slot.x - c.pos.x) * 0.18;
@@ -484,6 +635,7 @@ function loop(now = performance.now()) {
     }
     if (ui.grab && ui.confirmStart && now - ui.confirmStart >= CONFIRM_MS) select(ui.grab.card);
   }
+  if (!ui.locked) updateBanner();
 
   for (const c of cards) if (!c.el.classList.contains('chosen')) place(c, now, tiltPointer);
   requestAnimationFrame(loop);
@@ -526,14 +678,23 @@ const ZONE_HINTS = {
 
 function updateBanner() {
   const g = ui.grab;
+  const hot = ui.hot?.el;
+  if (!g && !hot && !ui.hoverCard && ui.note && performance.now() < ui.note.until) return setBanner(ui.note.text);
   if (g) {
     const { emoji, title } = g.card.occ;
-    return setBanner(ui.confirmStart ? `✨ Keep ${title} up there…` : `⬆ Lift ${emoji} ${title} up above the line to choose it`);
+    if (hot === cancelBtn) return setBanner(`✕ Putting ${title} back…`);
+    if (g.lostAt) return setBanner(`✋ Letting go of ${title}…`);
+    return setBanner(ui.confirmStart ? `✨ Keep ${title} down there…` : `⬇ Pull ${emoji} ${title} down below the line to choose it`);
+  }
+  if (hot) {
+    if (hot.classList.contains('back')) return setBanner('☝️ Going back to the categories…');
+    return setBanner(ui.page === 'categories' ? `☝️ Opening ${hot.dataset.title}…` : `☝️ Switching to ${hot.dataset.title}…`);
   }
   if (ui.hoverCard) return setBanner(`☝️ Picking up ${ui.hoverCard.occ.title}…`);
   const playing = ui.player && performance.now() - ui.player.seen < PLAYER_LOST_MS;
   if (faces && hands && !playing && !ui.mouse.inside) return setBanner(ZONE_HINTS[ui.zoneHint] || ZONE_HINTS.none);
-  setBanner('☝️ Point at a card to pick it up');
+  if (ui.openHand) return setBanner('☝️ Point with one finger');
+  setBanner(ui.page === 'categories' ? '☝️ Point at a category to choose it' : '☝️ Point at a card to pick it up');
 }
 
 function drawCursors(pointers) {
@@ -552,15 +713,16 @@ function drawCursors(pointers) {
 // ---------- Selection → countdown → photo ----------
 async function select(card) {
   ui.locked = true;
-  ui.grab = null; ui.hoverCard = null; ui.confirmStart = 0;
-  cursorsLayer.innerHTML = '';
+  const token = ++ui.session;
+  const wait = async (ms) => { await sleep(ms); return token === ui.session; }; // false: cancelled
+  ui.grab = null; ui.hoverCard = null; ui.confirmStart = 0; ui.hot = null;
   for (const c of cards) c.el.classList.toggle('faded', c !== card);
   card.el.classList.remove('hover', 'held');
   card.el.classList.add('chosen');
   const W = stage.clientWidth, H = stage.clientHeight;
   card.el.style.transform = `translate(${W / 2}px, ${H / 2}px) translate(-50%, -50%) translateZ(120px) rotateY(360deg) scale(1.9)`;
   setBanner(`🎉 Future ${card.occ.title}! Lower your hand and get ready…`);
-  await sleep(READY_MS + 800);
+  if (!await wait(READY_MS + 800)) return;
 
   // Park the card in the corner so the face is clear (re-read the size in case the screen rotated)
   const W2 = stage.clientWidth, H2 = stage.clientHeight;
@@ -569,15 +731,16 @@ async function select(card) {
   for (let n = COUNTDOWN; n >= 1; n--) {
     countdownEl.hidden = false; countdownEl.textContent = n;
     countdownEl.style.animation = 'none'; void countdownEl.offsetWidth; countdownEl.style.animation = '';
-    await sleep(1000);
+    if (!await wait(1000)) return;
   }
+  ui.captured = true; // too late to cancel now
   countdownEl.hidden = true;
   flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
 
   if (!video.videoWidth) {
     setBanner('No camera image to capture. Allow the camera, or use classic mode.');
     await sleep(2500);
-    return startAR(occupations, onCaptured);
+    return startAR(occupations, categories, onCaptured);
   }
   const orientation = stageOrientation();
   const photo = toCroppedDataUrl(video, video.videoWidth, video.videoHeight, true, ratioFor(orientation));

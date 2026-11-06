@@ -3,7 +3,7 @@ import { toCroppedDataUrl, getOrientation, ratioFor } from './util.js';
 import { loadTemplate, applyTheme, renderFrame } from './frame.js';
 
 const $ = (s) => document.querySelector(s);
-const state = { occupations: [], selected: null, photo: null, result: null, stream: null, mode: 'ar', orientation: 'portrait', template: null };
+const state = { occupations: [], categories: [], category: null, selected: null, photo: null, result: null, stream: null, mode: 'ar', orientation: 'portrait', template: null };
 
 // ---------- Staff note: AI credit ran out ----------
 const BILLING = { openai: 'platform.openai.com → Settings → Billing', gemini: 'aistudio.google.com → Billing' };
@@ -18,7 +18,7 @@ function show(name) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${name}`));
   document.body.dataset.screen = name;
   if (name === 'camera') startCamera(); else stopCamera();
-  if (name === 'ar') { state.mode = 'ar'; startAR(state.occupations, onARCaptured); }
+  if (name === 'ar') { state.mode = 'ar'; startAR(state.occupations, state.categories, onARCaptured); }
   else if (name !== 'loading' && name !== 'result') stopAR();
   if (name === 'cards') state.mode = 'classic';
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -37,14 +37,31 @@ async function loadOccupations() {
   const data = await res.json();
   if (data.needsSetup) { location.href = '/setup.html'; return new Promise(() => {}); } // no API key yet
   state.occupations = data.occupations;
+  state.categories = (data.categories || []).filter((c) => data.occupations.some((o) => o.category === c.id));
   setCreditOut(data.creditOut, data.provider);
   $('#providerBadge').textContent = data.provider === 'demo' ? 'Demo mode (no AI)' : `AI: ${data.provider}`;
 }
 
+// Category tabs above the classic grid (same categories as the AR page)
+function buildClassicTabs() {
+  const bar = $('#catTabs');
+  bar.innerHTML = '';
+  bar.hidden = !state.categories.length;
+  for (const cat of state.categories) {
+    const b = document.createElement('button');
+    b.className = 'btn ghost cat-tab' + (cat.id === state.category ? ' active' : '');
+    b.textContent = `${cat.emoji} ${cat.title}`;
+    b.addEventListener('click', () => { state.category = cat.id; buildClassicTabs(); buildClassicCards(); });
+    bar.appendChild(b);
+  }
+}
+const visibleOccupations = () =>
+  state.category ? state.occupations.filter((o) => o.category === state.category) : state.occupations;
+
 function buildClassicCards() {
   const grid = $('#cardGrid');
   grid.innerHTML = '';
-  for (const occ of state.occupations) {
+  for (const occ of visibleOccupations()) {
     const card = document.createElement('button');
     card.className = 'card';
     card.style.setProperty('--c', occ.color);
@@ -73,12 +90,13 @@ function chooseOccupation(occ, cardEl) {
 $('#surpriseBtn').addEventListener('click', () => {
   const cards = [...document.querySelectorAll('.card')];
   let i = 0;
-  const spins = 12 + Math.floor(Math.random() * state.occupations.length);
+  const list = visibleOccupations();
+  const spins = 12 + Math.floor(Math.random() * list.length);
   const tick = () => {
     cards.forEach((c) => c.classList.remove('selected'));
     cards[i % cards.length].classList.add('selected');
     if (i++ < spins) setTimeout(tick, 60 + i * 12);
-    else { const idx = (i - 1) % cards.length; chooseOccupation(state.occupations[idx], cards[idx]); }
+    else { const idx = (i - 1) % cards.length; chooseOccupation(list[idx], cards[idx]); }
   };
   tick();
 });
@@ -264,6 +282,8 @@ Promise.all([loadOccupations(), loadTemplate()])
     state.template = t;
     applyTheme(t);
     for (const occ of state.occupations) occ.cardImage = t.cards?.[occ.id] || '';
+    state.category = state.categories[0]?.id || null;
+    buildClassicTabs();
     buildClassicCards();
     $('#startBtn').disabled = false; $('#homeClassicBtn').disabled = false;
   })

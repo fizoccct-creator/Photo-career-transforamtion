@@ -41,10 +41,11 @@ Create one Figma file, for example **Career Transformation booth**, with these p
 
 The app has to work live, so a few things are fixed:
 
-- **The camera fills the AR screen.** Use a photo of a person standing waist up as a placeholder for the live camera image. Design the parts *on top*: banner, buttons, cards, stand frame and lift line.
-- **The cards live at the bottom.** With 16 careers: landscape has 2 rows of 8, portrait has 4 rows of 4, using up to 40 % of the height (with 10 or fewer careers: one row in landscape, rows of 3 in portrait, 32 %). Keep the middle of the screen clear: that's where the player's face and body are.
+- **The camera fills the AR screen.** Use a photo of a person standing waist up as a placeholder for the live camera image. Design the parts *on top*: banner, buttons, category tiles and tabs, cards, Cancel, stand frame and pull-down line.
+- **Categories first, then the cards along the top.** After Start, 4 category tiles sit in a row across the top. Inside a category, the tabs (← Categories, Business, Sports, Science, Creative) sit in the top bar (landscape) or just under it (portrait), and that category's cards sit in a row under them: up to 8 per row in landscape, 4 per row in portrait (biggest category: Creative, 8 cards). The banner is at the bottom. Keep the middle of the screen clear below the cards: the player pulls a card down there to choose it.
+- **Pointable buttons** (category tiles, tabs, Cancel) fill a yellow bar along their bottom edge while a finger points at them. Make them big (at least 56 px tall).
 - **The stand frame** is in the middle: 42 % of the width in landscape, 60 % in portrait. It runs from near the top down to the cards. Keep it subtle, because it sits over the camera image.
-- **Texts change while playing.** Design the longest version (see `screens.md`), for example "⬆ Lift ✈️ Graphic Designer up above the line to choose it".
+- **Texts change while playing.** Design the longest version (see `screens.md`), for example "⬇ Pull 🎨 Graphic Designer down below the line to choose it".
 - **Touch and distance:** players stand about 1–2 m from the screen. Use big text and big targets; buttons at least 64 px tall at 1920 × 1080.
 - **Fonts:** the app uses the computer's system font (Segoe UI on Windows). To use a different font, choose one you're allowed to embed (Google Fonts are free) and put the font files (`.woff2`) in `design/fonts/`.
 - **Emoji** in the current design are placeholders. You can replace them with your own icons; export those as SVG.
@@ -55,7 +56,7 @@ Name each artwork frame **with its path**. Figma turns `/` into folders when exp
 
 | Figma frame name | Size (px) | Export as |
 |------------------|-----------|-----------|
-| `cards/pilot` (one per career, 16 in all: `doctor`, `photographer`, `videographer`, `graphic-designer`, `film-director`, `news-anchor`, `music-producer`, `fashion-designer`, `astronaut`, `chef`, `firefighter`, `football-player`, `scientist`, `robotics-engineer`, `architect`) | 750 × 1000 | PNG |
+| `cards/pilot` (one per career, 23 in all: `doctor`, `photographer`, `videographer`, `graphic-designer`, `film-director`, `news-anchor`, `music-producer`, `fashion-designer`, `astronaut`, `chef`, `firefighter`, `football-player`, `scientist`, `robotics-engineer`, `architect`, `ceo`, `entrepreneur`, `lawyer`, `banker`, `basketball-player`, `badminton-player`, `racing-driver`) | 750 × 1000 | PNG |
 | `frames/frame-portrait` | 1080 × 1920 | PNG, transparent photo window |
 | `frames/frame-landscape` | 1920 × 1080 | PNG, transparent photo window |
 | `frames/background-portrait` / `frames/background-landscape` (optional) | same as the frames | PNG or JPG |
@@ -83,6 +84,6 @@ Change brand colours in `design/template.json` too: the app reads them from ther
 When a screen is ready, either:
 
 - **Share the Figma link** with Claude. Claude can read the file directly once the Figma connector is connected. In Claude Code, run `/mcp` and sign in to Figma. Or,
-- **Export each screen frame as PNG** (2x is best) into `handoff/`, named like the screens in `screens.md` (for example `landscape-03-ar-lift.png`). Add any notes (spacing, animations, hover states) in `handoff/notes.md`.
+- **Export each screen frame as PNG** (2x is best) into `handoff/`, named like the screens in `screens.md` (for example `landscape-05-ar-pull.png`). Add any notes (spacing, animations, hover states) in `handoff/notes.md`.
 
 Then ask Claude to "build the screens in `design/figma/handoff`". Artwork you exported into `design/` works right away.

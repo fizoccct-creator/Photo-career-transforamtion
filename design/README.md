@@ -12,7 +12,7 @@ design/
 │
 ├── cards/                      career cards (one image per career)
 │   ├── guide-card.svg            ← size guide: 750 × 1000 px (3:4)
-│   ├── pilot.png                 one per career (16), named after its id in occupations.json:
+│   ├── pilot.png                 one per career (23), named after its id in occupations.json:
 │   └── …                         doctor, photographer, videographer, graphic-designer, film-director,
 │                                 news-anchor, music-producer, fashion-designer, astronaut, chef,
 │                                 firefighter, football-player, scientist, robotics-engineer, architect
@@ -32,7 +32,7 @@ Anything you leave out falls back to the built-in design in the company colours.
 
 - One image per career, named after the `id` in `occupations.json`, for example `pilot.png`.
 - Size **750 × 1000 px (3:4)**. Keep text and icons inside the safe area on `guide-card.svg`. The app rounds the corners.
-- The design is the whole card. The app adds only the hover glow, the pick-up and lift progress outline and the 3D tilt.
+- The design is the whole card. The app adds only the hover glow, the pick-up and pull-down progress outline and the 3D tilt.
 - A career with no image uses the built-in card (emoji and name).
 - New career? Add it to `occupations.json`, then add `design/cards/<id>.png`.
 

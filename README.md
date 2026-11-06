@@ -33,22 +33,25 @@ Everything adapts to the screen shape, so a portrait kiosk or monitor works as w
 
 | Screen     | Card layout                | Photo sent to AI | AI output size |
 |------------|----------------------------|------------------|----------------|
-| Horizontal | one row along the bottom (2 rows of 8 with more than 10 careers) | 4:3 | 1536×1024 |
-| Vertical   | rows of 3 along the bottom (rows of 4 with more than 10 careers) | 3:4 | 1024×1536 |
+| Horizontal | rows of 8 along the top, under the category tabs | 4:3 | 1536×1024 |
+| Vertical   | rows of 4 along the top, under the category tabs | 3:4 | 1024×1536 |
 
 ## AR mode
 
-After Start, the webcam fills the whole screen and the career cards float in 3D along the bottom. They tilt toward your finger and turn as you move your head, so you can look around them.
+After Start, the webcam fills the whole screen. The first page shows the **career categories** (Business, Sports, Science, Creative). Point at one to open it: only that category's career cards are shown, floating in 3D along the top of the screen. The tabs at the top switch to another category, and **← Categories** goes back. The cards tilt toward your finger and turn as you move your head, so you can look around them.
 
 - **Stand in the frame, waist up.** A dashed frame in the middle of the screen marks where to stand, with a head-and-shoulders outline for a medium shot (waist up in the photo). Only someone inside it, at medium-shot distance, can play. The banner tells people to step closer, step back or move into the frame.
 - **One player at a time.** The closest face in the frame becomes the player and gets a "Player" outline. Only that person's hand works; other people's hands are ignored.
-- **Point** your index finger at a card for a moment. A progress line runs around it, then the card sticks to your finger.
-- **Lift it up** above the line and keep it there for a moment to choose it. A card that stays in the bottom area is never chosen. If your hand leaves the camera, the card goes back.
+- **Point with one finger.** Only a pointing hand (index finger out, the others folded) shows a cursor, and there is only ever one cursor on screen. An open hand does nothing, so waving doesn't pick cards by accident.
+- **Point** at a card for a moment. A progress line runs around it, then the card sticks to your finger.
+- **Pull it down** below the line and keep it there for a moment to choose it. A card that stays up in the card area is never chosen. Open your hand (or move it out of the camera) to let go: the card goes back.
+- **✕ Cancel** appears while you hold a card and during the countdown. Point at it (or click it) to put the card back or stop the countdown.
+- Buttons (categories, tabs, Cancel) are pressed by pointing at them until the yellow bar fills up.
 - The card is chosen, you get a moment to lower your hand, then a **5-second countdown** takes the photo and the AI transforms it.
-- The mouse works as a stand-in finger (move = point).
+- The mouse works as a stand-in finger (move = point) when no hand is pointing.
 - "Use classic mode" switches to the click-a-card version.
 
-Hand tracking uses Google MediaPipe in the browser, loaded from a CDN, so the device needs internet access. Settings like the pick-up time (`GRAB_MS`), the lift time (`CONFIRM_MS`), the stand zone size (`ZONE_WIDTH`) and the medium-shot distance (`SHOT_MIN`, `SHOT_MAX`) are at the top of `public/ar.js`. Tip: once you find the spot where someone is waist up in the photo, mark it with a floor sticker.
+Hand tracking uses Google MediaPipe in the browser, loaded from a CDN, so the device needs internet access. Settings like the pick-up time (`GRAB_MS`), the button press time (`PRESS_MS`), the pull-down time (`CONFIRM_MS`), the one-finger rule (`POINT_ONLY`), the stand zone size (`ZONE_WIDTH`) and the medium-shot distance (`SHOT_MIN`, `SHOT_MAX`) are at the top of `public/ar.js`. Tip: once you find the spot where someone is waist up in the photo, mark it with a floor sticker.
 
 ## Choose the AI
 
@@ -73,11 +76,21 @@ Add an entry to [`occupations.json`](occupations.json). No code changes needed:
   "emoji": "👨‍🍳",
   "color": "#ea580c",
   "tagline": "Cook up something amazing",
+  "category": "creative",
   "prompt": "a professional head chef wearing a white double-breasted chef jacket and tall toque, in a busy stainless-steel restaurant kitchen"
 }
 ```
 
-`prompt` describes the outfit and scene; the server adds instructions to keep the person's face recognisable.
+`prompt` describes the outfit and scene; the server adds instructions to keep the person's face recognisable. `category` is the id of one of the categories in [`categories.json`](categories.json) (`business`, `sports`, `science`, `creative`). To move a career to another category, change that one word. Add a category by adding an entry to `categories.json`; a category with no careers is not shown.
+
+There are 23 careers now:
+
+| Category | Careers |
+|----------|---------|
+| 💼 Business | CEO, Entrepreneur, Lawyer, Banker |
+| ⚽ Sports | Football Player, Basketball Player, Badminton Player, Racing Driver, Firefighter |
+| 🔬 Science | Pilot, Doctor, Astronaut, Scientist, Robotics Engineer, Architect |
+| 🎨 Creative | Photographer, Videographer, Graphic Designer, Film Director, News Anchor, Music Producer, Fashion Designer, Chef |
 
 ## Files
 
@@ -85,7 +98,8 @@ Add an entry to [`occupations.json`](occupations.json). No code changes needed:
 - `public/setup.html`: Setup page (AI choice and API key)
 - `Start Booth (Windows).bat`, `Start Booth (Mac).command`: double-click launchers
 - `occupations.json`: the career cards
-- `public/ar.js`: AR mode (stand zone, one-player lock, point and lift a card, countdown photo)
+- `categories.json`: the career categories (first page after Start)
+- `public/ar.js`: AR mode (categories, stand zone, one-player lock, one-finger pointing, pull a card down, cancel, countdown photo)
 - `public/app.js`: screens, classic mode, transformation and download
 - `share.js`: QR download (stores photos locally or in online storage)
 - `public/frame.js`: draws the downloaded photo from the brand template

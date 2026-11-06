@@ -22,6 +22,10 @@ const MAX_BODY = 15 * 1024 * 1024; // 15 MB
 
 const loadOccupations = () =>
   JSON.parse(fs.readFileSync(path.join(ROOT, 'occupations.json'), 'utf8'));
+// Career categories (the first page after Start). Each career names its category in occupations.json.
+const loadCategories = () => {
+  try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'categories.json'), 'utf8')); } catch { return []; }
+};
 
 function buildPrompt(occ, orientation) {
   return [
@@ -274,7 +278,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'GET' && req.url === '/api/occupations') {
       const list = loadOccupations().map(({ prompt, ...pub }) => pub);
-      return sendJSON(res, 200, { provider: provider(), needsSetup: needsSetup(), creditOut: credit.out && credit.provider === provider(), share: shareStatus(), occupations: list });
+      return sendJSON(res, 200, { provider: provider(), needsSetup: needsSetup(), creditOut: credit.out && credit.provider === provider(), share: shareStatus(), categories: loadCategories(), occupations: list });
     }
 
     if (req.method === 'GET' && req.url === '/api/design') return sendJSON(res, 200, loadDesign());

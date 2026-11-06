@@ -278,7 +278,7 @@ body[data-screen="home"] .topbar, body[data-screen="ar"] .topbar { display: none
 
 /* One-player lock: frame around the face of whoever is playing */
 .ar-player {
-  position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2;
+  position: absolute; left: 0; top: 0; pointer-events: none;
   border: 3px solid var(--primary); border-radius: 40%;
   box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 70%, transparent);
 }
@@ -343,3 +343,63 @@ body[data-screen="result"] .staff-note, body[data-screen="loading"] .staff-note,
 }
 /* On the home screen, sit at the top, clear of the Start buttons */
 body[data-screen="home"] .staff-note { top: 12px; bottom: auto; left: 50%; transform: translateX(-50%); }
+
+/* ---------- Career categories (AR): first page after Start, then tabs over the cards ---------- */
+.ar-info { top: auto; bottom: 22px; } /* banner at the bottom: the cards are at the top now */
+.pointable { position: relative; overflow: hidden; --p: 0; }
+/* Progress bar while a finger points at a button */
+.pointable::after {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 6px; width: calc(var(--p) * 100%);
+  background: var(--primary); pointer-events: none;
+}
+.pointable.pointing { box-shadow: 0 0 0 3px var(--primary), 0 0 30px var(--primary); }
+
+.ar-cats {
+  position: absolute; left: 0; right: 0; top: 100px; z-index: 3;
+  display: flex; justify-content: center; gap: 2.4vw; pointer-events: none;
+}
+.ar-cat {
+  pointer-events: auto; cursor: pointer; font: inherit; color: var(--light);
+  width: min(18vw, 26vh); aspect-ratio: 4 / 5; border-radius: 22px;
+  border: 3px solid var(--primary);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, transparent) 0%, color-mix(in srgb, var(--secondary) 90%, transparent) 110%);
+  box-shadow: 0 18px 34px #000a; backdrop-filter: blur(4px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  transition: transform .2s, box-shadow .2s; animation: cat-in .45s ease backwards;
+}
+.ar-cat:nth-child(2) { animation-delay: .06s; } .ar-cat:nth-child(3) { animation-delay: .12s; } .ar-cat:nth-child(4) { animation-delay: .18s; }
+@keyframes cat-in { from { opacity: 0; transform: translateY(-40px); } }
+.ar-cat.pointing { transform: translateY(6px) scale(1.06); }
+.ar-cat .emoji { font-size: min(7vw, 10vh); line-height: 1; }
+.ar-cat .title { font-weight: 800; font-size: min(2.2vw, 3.2vh); }
+.ar-cat .count { color: color-mix(in srgb, var(--light) 75%, transparent); font-size: min(1.1vw, 1.7vh); }
+
+.ar-tabs { display: flex; gap: 10px; pointer-events: none; }
+.ar-tab {
+  pointer-events: auto; cursor: pointer; font: inherit; font-weight: 700; font-size: 1.05rem; color: var(--light);
+  min-height: 56px; padding: 12px 22px; border-radius: 99px;
+  background: color-mix(in srgb, var(--secondary) 80%, transparent); border: 2px solid color-mix(in srgb, var(--light) 25%, transparent);
+  backdrop-filter: blur(6px);
+}
+.ar-tab.active { background: var(--primary); color: var(--secondary); border-color: var(--primary); }
+.ar-tab.back { color: color-mix(in srgb, var(--light) 85%, transparent); }
+
+.ar-cancel {
+  position: absolute; left: 0; top: 0; z-index: 6; font-size: 1.2rem; padding: 16px 30px; min-height: 64px;
+  background: color-mix(in srgb, #dc2626 85%, transparent); color: #fff; border: 2px solid var(--light);
+}
+.ar-lift span { top: 12px; transform: translate(-50%, 0); } /* label under the pull-down line */
+.ar-cats[hidden], .ar-tabs[hidden] { display: none !important; }
+
+@media (orientation: portrait) {
+  .ar-topbar { flex-wrap: wrap; row-gap: 10px; }
+  .ar-tabs { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .ar-tab { font-size: .95rem; padding: 10px 16px; }
+  .ar-cats { gap: 3vw; }
+  .ar-cat { width: 21vw; border-radius: 18px; }
+  .ar-cat .emoji { font-size: 9vw; } .ar-cat .title { font-size: 3.6vw; } .ar-cat .count { font-size: 2.2vw; }
+}
+
+/* Classic mode: category tabs above the grid */
+.cat-tabs { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 0 0 22px; }
+.cat-tab.active { background: var(--primary); color: var(--secondary); border-color: var(--primary); }

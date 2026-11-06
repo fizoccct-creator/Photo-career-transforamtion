@@ -5,6 +5,7 @@
     "emoji": "✈️",
     "color": "#2563eb",
     "tagline": "Take command of the skies",
+    "category": "science",
     "prompt": "an airline captain wearing a crisp navy pilot uniform with gold captain stripes on the shoulders, pilot wings badge and a captain's hat, standing in front of a commercial airliner cockpit with the sky visible through the windows"
   },
   {
@@ -13,6 +14,7 @@
     "emoji": "🩺",
     "color": "#059669",
     "tagline": "Heal and save lives",
+    "category": "science",
     "prompt": "a medical doctor wearing a clean white lab coat over scrubs with a stethoscope around the neck and a hospital ID badge, standing in a bright modern hospital corridor"
   },
   {
@@ -21,6 +23,7 @@
     "emoji": "📷",
     "color": "#d97706",
     "tagline": "Capture the perfect moment",
+    "category": "creative",
     "prompt": "a professional photographer holding a full-frame DSLR camera with a large lens, wearing a stylish casual outfit with a camera strap, in a photo studio with softbox lights and a backdrop"
   },
   {
@@ -29,6 +32,7 @@
     "emoji": "🎥",
     "color": "#dc2626",
     "tagline": "Tell stories in motion",
+    "category": "creative",
     "prompt": "a professional videographer operating a cinema camera on a shoulder rig, wearing headphones around the neck and practical dark clothing, on a film set with lighting rigs and a clapperboard"
   },
   {
@@ -37,6 +41,7 @@
     "emoji": "🎨",
     "color": "#9333ea",
     "tagline": "Design the world's look",
+    "category": "creative",
     "prompt": "a creative graphic designer in trendy smart-casual clothes holding a digital drawing tablet and stylus, in a colorful modern design studio with large monitors showing design work and mood boards on the wall"
   },
   {
@@ -45,6 +50,7 @@
     "emoji": "🎬",
     "color": "#7c3aed",
     "tagline": "Call the shots on set",
+    "category": "creative",
     "prompt": "a film director in a stylish dark jacket holding a megaphone and a script, sitting in a director's chair on a busy movie set with studio lights, a camera crane and a clapperboard"
   },
   {
@@ -53,6 +59,7 @@
     "emoji": "🎤",
     "color": "#0284c7",
     "tagline": "Bring the news to the world",
+    "category": "creative",
     "prompt": "a professional TV news anchor in a sharp tailored suit sitting at a glossy news desk, in a modern broadcast studio with large screens showing world news graphics"
   },
   {
@@ -61,6 +68,7 @@
     "emoji": "🎧",
     "color": "#db2777",
     "tagline": "Make the next big hit",
+    "category": "creative",
     "prompt": "a music producer and DJ wearing large studio headphones, hands on a mixing desk with glowing faders, in a recording studio with neon lights, speakers and a microphone"
   },
   {
@@ -69,6 +77,7 @@
     "emoji": "👗",
     "color": "#e11d48",
     "tagline": "Design what the world wears",
+    "category": "creative",
     "prompt": "a fashion designer in a chic outfit with a measuring tape around the neck and a sketchbook of designs, in a bright atelier with mannequins, fabric rolls and a clothing rack"
   },
   {
@@ -77,6 +86,7 @@
     "emoji": "🚀",
     "color": "#475569",
     "tagline": "Explore beyond the stars",
+    "category": "science",
     "prompt": "an astronaut in a detailed white NASA-style spacesuit holding the helmet under one arm, inside a space station with a large window showing planet Earth behind"
   },
   {
@@ -85,6 +95,7 @@
     "emoji": "👨‍🍳",
     "color": "#ea580c",
     "tagline": "Cook up something amazing",
+    "category": "creative",
     "prompt": "a professional head chef wearing a white double-breasted chef jacket and tall toque, in a busy stainless-steel restaurant kitchen with flames on the stove"
   },
   {
@@ -93,6 +104,7 @@
     "emoji": "🚒",
     "color": "#b91c1c",
     "tagline": "Be the hero who saves the day",
+    "category": "sports",
     "prompt": "a firefighter in full protective turnout gear with reflective stripes and a helmet, standing in front of a red fire truck at a fire station"
   },
   {
@@ -101,6 +113,7 @@
     "emoji": "⚽",
     "color": "#16a34a",
     "tagline": "Score the winning goal",
+    "category": "sports",
     "prompt": "a professional football (soccer) player in a team kit with a captain's armband, holding a football, on the pitch of a packed stadium under bright floodlights"
   },
   {
@@ -109,6 +122,7 @@
     "emoji": "🔬",
     "color": "#0891b2",
     "tagline": "Discover something new",
+    "category": "science",
     "prompt": "a scientist in a white lab coat and safety goggles holding a glowing test tube, in a modern laboratory with microscopes and colourful experiments"
   },
   {
@@ -117,6 +131,7 @@
     "emoji": "🤖",
     "color": "#4f46e5",
     "tagline": "Build the robots of the future",
+    "category": "science",
     "prompt": "a robotics engineer in a smart work jacket holding a tablet, next to a sleek robot arm, in a high-tech workshop with circuit boards and glowing screens"
   },
   {
@@ -125,6 +140,70 @@
     "emoji": "🏛️",
     "color": "#a16207",
     "tagline": "Design the cities of tomorrow",
+    "category": "science",
     "prompt": "an architect wearing a white hard hat holding rolled blueprints, with a large architectural model and a modern city skyline seen through a big office window"
+  },
+  {
+    "id": "ceo",
+    "title": "CEO",
+    "emoji": "👔",
+    "color": "#0f766e",
+    "tagline": "Lead the company to the top",
+    "category": "business",
+    "prompt": "a confident company CEO in a sharp tailored navy suit, standing in a glass-walled corner office high above a city skyline"
+  },
+  {
+    "id": "entrepreneur",
+    "title": "Entrepreneur",
+    "emoji": "🚀",
+    "color": "#ea580c",
+    "tagline": "Turn your big idea into a business",
+    "category": "business",
+    "prompt": "a young entrepreneur in smart-casual clothes pitching their startup on stage, with a big screen behind them showing a product launch and an audience in front"
+  },
+  {
+    "id": "lawyer",
+    "title": "Lawyer",
+    "emoji": "⚖️",
+    "color": "#7c2d12",
+    "tagline": "Win the case in court",
+    "category": "business",
+    "prompt": "a lawyer in a dark suit holding case files, standing in a grand wood-panelled courtroom"
+  },
+  {
+    "id": "banker",
+    "title": "Banker",
+    "emoji": "🏦",
+    "color": "#1e40af",
+    "tagline": "Make the big money decisions",
+    "category": "business",
+    "prompt": "an investment banker in a crisp suit and tie on a busy trading floor, with screens full of stock charts behind them"
+  },
+  {
+    "id": "basketball-player",
+    "title": "Basketball Player",
+    "emoji": "🏀",
+    "color": "#c2410c",
+    "tagline": "Slam dunk for the win",
+    "category": "sports",
+    "prompt": "a professional basketball player in a team jersey holding a basketball, on the court of a packed arena under bright lights"
+  },
+  {
+    "id": "badminton-player",
+    "title": "Badminton Player",
+    "emoji": "🏸",
+    "color": "#0891b2",
+    "tagline": "Smash your way to gold",
+    "category": "sports",
+    "prompt": "a professional badminton player in a national team sports kit holding a racket and shuttlecock, on court in a big international tournament hall"
+  },
+  {
+    "id": "racing-driver",
+    "title": "Racing Driver",
+    "emoji": "🏎️",
+    "color": "#dc2626",
+    "tagline": "Race to the chequered flag",
+    "category": "sports",
+    "prompt": "a racing driver in a fireproof racing suit covered in sponsor patches, holding a helmet, standing in the pit lane next to a race car"
   }
 ]
