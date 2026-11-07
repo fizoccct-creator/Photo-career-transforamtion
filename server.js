@@ -10,11 +10,15 @@ import { createShare, serveLocalShare, shareStatus } from './share.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ENV_FILE = path.join(ROOT, '.env');
+// Hosted on Vercel: the disk is read-only and settings come from the Vercel project's
+// Environment Variables (there is no .env file and no Setup page).
+const HOSTED = !!process.env.VERCEL;
 // First run on a new computer: start from the example settings.
-if (!fs.existsSync(ENV_FILE) && fs.existsSync(path.join(ROOT, '.env.example'))) {
-  fs.copyFileSync(path.join(ROOT, '.env.example'), ENV_FILE);
+if (!HOSTED && !fs.existsSync(ENV_FILE) && fs.existsSync(path.join(ROOT, '.env.example'))) {
+  try { fs.copyFileSync(path.join(ROOT, '.env.example'), ENV_FILE); } catch (e) { console.warn(`Could not create .env: ${e.message}`); }
 }
-if (fs.existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
+if (!HOSTED && fs.existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE);
+const SETTINGS_WHERE = HOSTED ? 'in your Vercel project (Settings → Environment Variables), then redeploy' : 'in .env (or on the Setup page)';
 
 const PORT = Number(process.env.PORT) || 3000;
 const provider = () => (process.env.AI_PROVIDER || 'demo').toLowerCase(); // can change from the Setup page
@@ -54,7 +58,7 @@ function aiError(message, status, error) {
 
 async function transformWithGemini(imageB64, mime, prompt, orientation) {
   const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY is not set in .env');
+  if (!key) throw new Error(`GEMINI_API_KEY is not set: add it ${SETTINGS_WHERE}`);
   const model = process.env.GEMINI_MODEL || 'gemini-3.1-flash-image';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -84,12 +88,14 @@ async function transformWithGemini(imageB64, mime, prompt, orientation) {
 
 async function transformWithOpenAI(imageB64, mime, prompt, orientation) {
   const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error('OPENAI_API_KEY is not set in .env');
+  if (!key) throw new Error(`OPENAI_API_KEY is not set: add it ${SETTINGS_WHERE}`);
   const form = new FormData();
   form.append('model', process.env.OPENAI_MODEL || 'gpt-image-2.5-sunburst');
   form.append('prompt', prompt);
   form.append('size', orientation === 'landscape' ? '1536x1024' : '1024x1536');
   form.append('image', new Blob([Buffer.from(imageB64, 'base64')], { type: mime }), mime === 'image/png' ? 'selfie.png' : 'selfie.jpg');
+  // Vercel answers at most 4.5 MB per response: a JPEG keeps the photo well under that.
+  if (HOSTED) { form.append('output_format', 'jpeg'); form.append('output_compression', '90'); }
   const res = await fetch('https://api.openai.com/v1/images/edits', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}` },
@@ -102,7 +108,7 @@ async function transformWithOpenAI(imageB64, mime, prompt, orientation) {
   }
   const b64 = json.data?.[0]?.b64_json;
   if (!b64) throw new Error('The AI did not return an image. Try another photo.');
-  return { b64, mime: 'image/png' };
+  return { b64, mime: HOSTED ? 'image/jpeg' : 'image/png' };
 }
 
 async function transformDemo(imageB64, mime) {
@@ -193,8 +199,10 @@ function loadDesign() {
 const DEFAULT_MODELS = { OPENAI_MODEL: 'gpt-image-2.5-sunburst', GEMINI_MODEL: 'gemini-3.1-flash-image' };
 const KEY_FOR = { openai: 'OPENAI_API_KEY', gemini: 'GEMINI_API_KEY' };
 
-const isLocal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
-const needsSetup = () => !!KEY_FOR[provider()] && !process.env[KEY_FOR[provider()]];
+// On Vercel every request arrives through Vercel's proxy, so "local" can't be trusted: the Setup
+// page is off there and settings live in the project's Environment Variables.
+const isLocal = (req) => !HOSTED && ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+const needsSetup = () => !HOSTED && !!KEY_FOR[provider()] && !process.env[KEY_FOR[provider()]];
 const keyHint = (k) => (k ? `${k.slice(0, 3)}…${k.slice(-4)}` : '');
 
 function settingsView() {

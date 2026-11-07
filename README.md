@@ -15,6 +15,29 @@ npm start        # http://localhost:3000
 
 Needs Node 20.12+. On the first start `.env` is created from `.env.example`.
 
+## Put it online with Vercel
+
+Vercel runs `server.js` as is, but a Vercel server can't save files. So there is no `.env` file and no Setup page there (the Setup page is switched off online, so nobody on the internet can change your key). Add the settings in your Vercel project instead:
+
+1. Open the project on vercel.com → **Settings → Environment Variables**.
+2. Add these, then **redeploy** (Deployments → ⋯ → Redeploy), because changes only apply to new deployments:
+
+   | Name | Value |
+   |------|-------|
+   | `AI_PROVIDER` | `openai` (or `gemini`, or `demo` to test without AI) |
+   | `OPENAI_API_KEY` | your key (`GEMINI_API_KEY` for Gemini) |
+   | `OPENAI_MODEL` | optional, default `gpt-image-2.5-sunburst` |
+   | `SHARE_STORAGE` | `s3`, plus the `S3_…` settings from [`SHARING.md`](SHARING.md) |
+
+   QR downloads need online storage on Vercel: "local" sharing saves photos on the computer, which Vercel can't do. Without it, everything else works and the QR panel says what's missing.
+
+Other things to know:
+
+- On Vercel the AI photo comes back as a JPEG, because Vercel answers at most 4.5 MB at a time.
+- A photo can take up to a minute to make. Vercel's free plan allows 5 minutes per request, so that's fine.
+- The page must be opened over `https://` (Vercel does that), or the browser won't allow the camera.
+- If a page still shows an error, open the deployment on vercel.com → **Logs**: the booth writes what went wrong there.
+
 ## QR download
 
 The result screen shows a QR code so players can download their photo on their phone. It works on the same Wi-Fi out of the box. For any phone over the internet, set up online storage: see [`SHARING.md`](SHARING.md).

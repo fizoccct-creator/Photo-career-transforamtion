@@ -59,6 +59,7 @@ function localBaseUrl() {
 }
 
 async function storeLocal(id, jpeg, html) {
+  if (process.env.VERCEL) throw new Error('QR download needs online storage on Vercel: set SHARE_STORAGE=s3 (see SHARING.md)');
   fs.mkdirSync(LOCAL_DIR, { recursive: true });
   fs.writeFileSync(path.join(LOCAL_DIR, `${id}.jpg`), jpeg);
   fs.writeFileSync(path.join(LOCAL_DIR, `${id}.html`), html);
@@ -149,7 +150,9 @@ async function storeS3(id, jpeg, html) {
 
 // ---------- Public API ----------
 export function shareStatus() {
-  if (MODE() !== 's3') return { mode: 'local', note: 'Phones must be on the same Wi-Fi as this computer' };
+  if (MODE() !== 's3') return process.env.VERCEL
+    ? { mode: 'local', error: 'On Vercel, set SHARE_STORAGE=s3 for QR downloads (see SHARING.md)' }
+    : { mode: 'local', note: 'Phones must be on the same Wi-Fi as this computer' };
   try { s3Config(); return { mode: 's3', note: 'Online storage' }; }
   catch (e) { return { mode: 's3', error: e.message }; }
 }
