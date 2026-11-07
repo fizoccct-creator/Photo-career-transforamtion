@@ -65,20 +65,21 @@ After Start, the webcam fills the whole screen. The first page shows the **caree
 
 - **Stand in the frame, waist up.** A dashed frame in the middle of the screen marks where to stand, with a head-and-shoulders outline for a medium shot (waist up in the photo). Only someone inside it, at medium-shot distance, can play. The banner tells people to step closer, step back or move into the frame.
 - **One player at a time.** The closest face in the frame becomes the player and gets a "Player" outline. Only that person's hand works; other people's hands are ignored.
-- **Point with one finger.** Only a pointing hand (index finger out, the others folded) shows a cursor, and there is only ever one cursor on screen. An open hand does nothing, so waving doesn't pick cards by accident.
+- **Point with one finger.** Only a pointing hand (the other fingers folded) shows a cursor, and there is only ever one cursor on screen. An open hand does nothing, so waving doesn't pick cards by accident.
 - **Point** at a card for a moment. A progress line runs around it, then the card sticks to your finger.
 - **Pull it down** below the line and keep it there for a moment to choose it. A card that stays up in the card area is never chosen. Open your hand (or move it out of the camera) to let go: the card goes back.
 - **✕ Cancel** appears while you hold a card and during the countdown. Point at it (or click it) to put the card back or stop the countdown.
 - Buttons (categories, tabs, Cancel) are pressed by pointing at them until the yellow bar fills up.
 - The card is chosen, you get a moment to lower your hand, then a **5-second countdown** takes the photo and the AI transforms it.
 - The mouse works as a stand-in finger (move = point) when no hand is pointing.
+- **Something not reacting?** Open the booth with `?debug` at the end of the address (`http://localhost:3000/?debug`). The line under the banner then shows what the tracker sees: faces, whether you're in the stand frame, whether you're the player, and whether your hand counts as pointing.
 - "Use classic mode" switches to the click-a-card version.
 
 Hand tracking uses Google MediaPipe in the browser, loaded from a CDN, so the device needs internet access. Settings like the pick-up time (`GRAB_MS`), the button press time (`PRESS_MS`), the pull-down time (`CONFIRM_MS`), the one-finger rule (`POINT_ONLY`), the stand zone size (`ZONE_WIDTH`) and the medium-shot distance (`SHOT_MIN`, `SHOT_MAX`) are at the top of `public/ar.js`. Tip: once you find the spot where someone is waist up in the photo, mark it with a floor sticker.
 
 ## Choose the AI
 
-Choose the AI and paste the API key on the **⚙️ Setup** page (`http://localhost:3000/setup.html`, also linked from the home screen). It saves them to `.env`, or you can edit `.env` yourself (`AI_PROVIDER`, `OPENAI_API_KEY`). Get a key at https://platform.openai.com/api-keys.
+Choose the AI and paste the API key on the **⚙️ Setup** page (`http://localhost:3000/setup.html`, also linked from the home screen). Setup needs a staff login: `admin` / `admin` unless you set `SETUP_USERNAME` and `SETUP_PASSWORD` in `.env` (change them before an event). It saves the settings to `.env`, or you can edit `.env` yourself (`AI_PROVIDER`, `OPENAI_API_KEY`). Get a key at https://platform.openai.com/api-keys.
 
 | Value    | What it does                                           | Key needed        |
 |----------|--------------------------------------------------------|-------------------|

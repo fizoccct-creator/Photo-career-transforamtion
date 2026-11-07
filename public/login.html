@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Staff login · Career Transformation</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .login { max-width: 420px; margin: 0 auto; padding: 12vh 20px 60px; text-align: left; }
+    .login h1 { margin: 0 0 6px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+    .login .sub { color: var(--muted); margin: 0 0 22px; }
+    .panel { background: var(--panel); border: 1px solid color-mix(in srgb, var(--light) 14%, transparent); border-radius: var(--radius); padding: 20px 22px; }
+    label { display: block; font-weight: 700; margin: 0 0 6px; }
+    label + input { margin-bottom: 16px; }
+    input { width: 100%; padding: 12px 14px; border-radius: 10px; font-size: 1rem;
+      border: 1px solid color-mix(in srgb, var(--light) 25%, transparent); background: color-mix(in srgb, var(--dark) 35%, transparent); color: var(--light); }
+    input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .actions { display: flex; gap: 10px; margin-top: 4px; }
+    .msg { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; font-weight: 600; background: color-mix(in srgb, #ef4444 25%, transparent); }
+  </style>
+</head>
+<body>
+  <main class="login">
+    <h1>🔒 Staff login</h1>
+    <p class="sub">Log in to open the booth setup (AI and API key).</p>
+    <form id="form" class="panel">
+      <label for="username">Username</label>
+      <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <div class="actions">
+        <button type="submit" class="btn primary">Log in</button>
+        <a href="/" class="btn ghost">← Back to the booth</a>
+      </div>
+      <p id="msg" class="msg" hidden></p>
+    </form>
+  </main>
+  <script type="module">
+    const form = document.querySelector('#form');
+    const msg = document.querySelector('#msg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.hidden = true;
+      const btn = form.querySelector('button'); btn.disabled = true;
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: form.username.value.trim(), password: form.password.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+        location.href = '/setup.html';
+      } catch (err) {
+        msg.textContent = `❌ ${err.message}`; msg.hidden = false;
+        form.password.value = ''; form.password.focus();
+      } finally { btn.disabled = false; }
+    });
+  </script>
+</body>
+</html>

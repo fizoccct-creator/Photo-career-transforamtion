@@ -74,6 +74,7 @@
         <button type="button" id="testBtn" class="btn ghost">🔌 Test key</button>
         <button type="submit" id="saveBtn" class="btn primary">💾 Save</button>
         <a href="/" id="boothBtn" class="btn ghost">▶ Open the booth</a>
+        <button type="button" id="logoutBtn" class="btn ghost">🔒 Log out</button>
       </div>
       <p id="msg" class="msg" hidden></p>
     </form>
@@ -109,6 +110,7 @@
     async function api(url, body) {
       const res = await fetch(url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401 && data.login) { location.href = '/login.html'; return new Promise(() => {}); } // logged out
       if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
       return data;
     }
@@ -146,6 +148,11 @@
         render(await api('/api/settings', v));
         say(v.provider === 'demo' ? '✅ Saved. The booth runs in demo mode.' : '✅ Saved. The booth is ready: press "Open the booth".');
       } catch (err) { say(`❌ ${err.message}`, false); }
+    });
+
+    $('#logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' }).catch(() => {});
+      location.href = '/';
     });
 
     api('/api/settings').then(render).catch((e) => say(`❌ ${e.message}`, false));

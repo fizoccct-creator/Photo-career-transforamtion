@@ -19,7 +19,8 @@ import { toCroppedDataUrl, ratioFor, sleep } from './util.js';
 const GRAB_MS = 600;           // point at a card this long to pick it up
 const PRESS_MS = 700;          // point at a button (category, tab, cancel) this long to press it
 const CONFIRM_MS = 800;        // keep the carried card below the line this long to choose it
-const POINT_ONLY = true;       // only a pointing hand (one finger out) moves the cursor; false = any hand
+const POINT_ONLY = true;       // only a pointing hand (other fingers folded) moves the cursor; false = any hand, even open
+const DEBUG = new URLSearchParams(location.search).has('debug'); // open the booth with ?debug to see what the tracker sees
 const DROP_MS = 700;           // a carried card goes back if the hand is lost for this long
 const COUNTDOWN = 5;           // seconds of countdown before the photo is taken
 const READY_MS = 1500;         // pause after choosing, to lower your hand
@@ -395,14 +396,25 @@ function setHead(x, y, k) {
   ui.head.y += (Math.max(-1, Math.min(1, y)) - ui.head.y) * k;
 }
 
-// Pointing pose: index finger out; middle finger and the ring or little finger folded.
-// (3D distances from the wrist, so it still works when the finger points toward the camera.)
+// Pointing pose: the middle finger and the ring or little finger are folded (an open hand or a
+// wave doesn't count). The index finger itself isn't checked: when you point at the screen it points
+// at the camera too, so it looks short to the camera even when it's straight. Folded fingers look
+// folded from any angle. (3D distances from the wrist.)
 export function isPointing(h, vw = 1, vh = 1) {
   const d = (a, b) => Math.hypot((h[a].x - h[b].x) * vw, (h[a].y - h[b].y) * vh, ((h[a].z || 0) - (h[b].z || 0)) * vw);
-  const out = (tip, pip) => d(0, tip) > d(0, pip) * 1.1;   // tip further from the wrist than the middle joint
-  const folded = (tip, pip) => d(0, tip) < d(0, pip);       // tip curled back toward the palm
-  if (!out(8, 6) || !folded(12, 10)) return false;          // index out, middle folded (not a peace sign)
-  return folded(16, 14) || folded(20, 18);                   // and the ring or little finger folded too
+  const folded = (tip, pip) => d(0, tip) < d(0, pip) * 1.05; // tip curled back toward the palm
+  return folded(12, 10) && (folded(16, 14) || folded(20, 18));
+}
+
+// ?debug: one status line with what the tracker sees, to check things at the booth.
+let debugAt = 0;
+function showDebug(hand, posed) {
+  const now = performance.now();
+  if (now - debugAt < 250) return;
+  debugAt = now;
+  const p = ui.player && now - ui.player.seen < PLAYER_LOST_MS;
+  setStatus(`debug · faces ${ui.faces.length} · zone: ${ui.zoneHint} · player ${p ? 'yes' : 'no'} · hands seen ${lastHands.length} · ` +
+    `player's hand ${hand ? (posed ? 'POINTING ☝️' : 'open ✋') : 'none'}`);
 }
 
 // At most ONE cursor on screen: the player's pointing finger, or (with no hand) the mouse.
@@ -415,6 +427,7 @@ function readPointers() {
   if (posed) ui.pose.last = now;
   const pointing = hand && (posed || now - ui.pose.last < POSE_GRACE_MS);
   ui.openHand = !!hand && !pointing;
+  if (DEBUG) showDebug(hand, posed);
   if (pointing) pointers.push({ key: 'hand', ...toStage(hand[8].x, hand[8].y) }); // index fingertip
   else if (ui.mouse.inside && !hand) pointers.push({ key: 'mouse', x: ui.mouse.x, y: ui.mouse.y });
 

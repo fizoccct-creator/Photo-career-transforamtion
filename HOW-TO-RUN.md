@@ -34,6 +34,8 @@ A black (Windows) or Terminal (Mac) window also opens. **Keep it open** while th
 
 On the booth's home screen, click **⚙️ Setup** in the bottom-right corner. You can also open `http://localhost:3000/setup.html` in the browser.
 
+Setup asks for a staff login first, so players can't open it from the ⚙️ link: username **admin**, password **admin**. **Change them before the event:** open `.env` in a text editor and set `SETUP_USERNAME=` and `SETUP_PASSWORD=`, then restart the booth. A login lasts 8 hours; **🔒 Log out** ends it.
+
 Setup only works on the booth computer itself. Phones that scan the QR code can't open it.
 
 ## Problems

@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import { createShare, serveLocalShare, shareStatus } from './share.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -152,6 +153,11 @@ function serveStatic(req, res) {
   const rel = isDesign ? urlPath.slice('/design/'.length) : urlPath === '/' ? 'index.html' : urlPath;
   const file = path.normalize(path.join(baseDir, rel));
   if (!file.startsWith(baseDir + path.sep)) return sendJSON(res, 403, { error: 'Forbidden' });
+  // The Setup page itself, however the address is written: booth computer + logged in only.
+  if (['setup.html', 'login.html'].includes(path.basename(file).toLowerCase())) {
+    if (!isLocal(req)) return sendJSON(res, 403, { error: 'Setup only works on the booth computer itself.' });
+    if (path.basename(file).toLowerCase() === 'setup.html' && !loggedIn(req)) { res.writeHead(302, { Location: '/login.html' }); return res.end(); }
+  }
   if (isDesign && !IMAGE_EXTS.includes(path.extname(file).toLowerCase()) && path.extname(file) !== '.svg') {
     return sendJSON(res, 403, { error: 'Only images are served from /design' });
   }
@@ -260,8 +266,48 @@ async function testKey(p, key, model) {
   return 'Demo mode needs no key.';
 }
 
+// ---------- Setup login ----------
+// The Setup page needs a username and password, so players can't open it from the ⚙️ link.
+// Change them in .env (SETUP_USERNAME, SETUP_PASSWORD). A login lasts SESSION_HOURS.
+const SETUP_USERNAME = () => process.env.SETUP_USERNAME || 'admin';
+const SETUP_PASSWORD = () => process.env.SETUP_PASSWORD || 'admin';
+const SESSION_HOURS = 8;
+const COOKIE = 'booth_setup';
+const sessions = new Map(); // token → expiry time
+const sameText = (a, b) => {
+  const x = crypto.createHash('sha256').update(String(a)).digest(), y = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(x, y);
+};
+function loggedIn(req) {
+  const m = /(?:^|;\s*)booth_setup=([a-f0-9]{64})/.exec(req.headers.cookie || '');
+  const exp = m && sessions.get(m[1]);
+  if (!exp) return false;
+  if (exp < Date.now()) { sessions.delete(m[1]); return false; }
+  return true;
+}
+async function handleLogin(req, res) {
+  if (!isLocal(req)) return sendJSON(res, 403, { error: 'Setup only works on the booth computer itself (http://localhost).' });
+  if (req.url === '/api/logout') {
+    const m = /(?:^|;\s*)booth_setup=([a-f0-9]{64})/.exec(req.headers.cookie || '');
+    if (m) sessions.delete(m[1]);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': `${COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0` });
+    return res.end('{}');
+  }
+  const { username, password } = JSON.parse(await readBody(req));
+  const ok = sameText(username || '', SETUP_USERNAME()) & sameText(password || '', SETUP_PASSWORD());
+  if (!ok) {
+    await new Promise((r) => setTimeout(r, 800)); // slow down guessing
+    return sendJSON(res, 401, { error: 'Wrong username or password.' });
+  }
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, Date.now() + SESSION_HOURS * 3600 * 1000);
+  res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_HOURS * 3600}` });
+  res.end('{}');
+}
+
 async function handleSettings(req, res) {
   if (!isLocal(req)) return sendJSON(res, 403, { error: 'Setup only works on the booth computer itself (http://localhost).' }), true;
+  if (!loggedIn(req)) return sendJSON(res, 401, { error: 'Please log in first.', login: true }), true; // after the local check
   if (req.method === 'GET' && req.url === '/api/settings') return sendJSON(res, 200, settingsView()), true;
   if (req.method === 'POST' && req.url === '/api/settings') {
     saveSettings(cleanSettings(JSON.parse(await readBody(req))));
@@ -290,8 +336,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && req.url === '/api/design') return sendJSON(res, 200, loadDesign());
-    if (req.url.startsWith('/api/settings') && await handleSettings(req, res)) return;
-    if (req.url === '/setup.html' && !isLocal(req)) return sendJSON(res, 403, { error: 'Setup only works on the booth computer itself.' });
+    // Decoded and lower case, like the file server and the (case-insensitive) Mac/Windows disk see it.
+    let pathname = new URL(req.url, 'http://x').pathname;
+    try { pathname = decodeURIComponent(pathname).toLowerCase(); } catch { return sendJSON(res, 400, { error: 'Bad address' }); }
+    if (req.method === 'POST' && (pathname === '/api/login' || pathname === '/api/logout')) return handleLogin(req, res);
+    if (pathname.startsWith('/api/settings') && await handleSettings(req, res)) return;
+    if (pathname === '/setup.html' || pathname === '/login.html') {
+      if (!isLocal(req)) return sendJSON(res, 403, { error: 'Setup only works on the booth computer itself.' });
+      if (pathname === '/setup.html' && !loggedIn(req)) { res.writeHead(302, { Location: '/login.html' }); return res.end(); }
+    }
 
     if (req.method === 'POST' && req.url === '/api/transform') {
       const { occupationId, image, orientation } = JSON.parse(await readBody(req));
