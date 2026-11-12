@@ -4,34 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Career Transformation</title>
+  <link rel="preload" href="fonts/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header class="topbar">
-    <div class="logo" data-brand-name>✨ Career <span>Transformation</span></div>
+    <div class="logo" data-brand-name>Career Transformation</div>
     <div id="providerBadge" class="badge"></div>
   </header>
 
   <main>
     <!-- Home: players press Start when ready -->
     <section id="screen-home" class="screen active">
-      <div class="home-float" aria-hidden="true">
-        <span>✈️</span><span>🩺</span><span>📷</span><span>🎥</span><span>🎨</span>
-      </div>
+      <div class="giant home-giant" aria-hidden="true">you</div>
+      <div id="homeCards" class="home-cards" aria-hidden="true"></div>
       <div class="home-content">
-        <div class="home-logo" data-brand-name>✨ Career <span>Transformation</span></div>
-        <h1>Who will you become?</h1>
+        <div class="home-brand"><span class="home-logo" data-brand-name>Career Transformation</span><span class="tag">Photo booth</span></div>
+        <p id="homeKicker" class="kicker">Careers · Categories · 1 photo</p>
+        <h1>Who will<br />you become?</h1>
         <p class="sub">Choose a category, point at a career card, pull it down, and meet your future self.</p>
+        <div class="home-actions">
+          <button id="startBtn" class="btn primary start" disabled>Start <span class="arrow" aria-hidden="true">→</span></button>
+          <button id="homeClassicBtn" class="btn link" disabled>Classic mode (no hand tracking)</button>
+        </div>
         <ol class="how">
-          <li><b>🧍</b><span>Stand in the frame</span></li>
-          <li><b>🗂️</b><span>Choose a category</span></li>
-          <li><b>☝️</b><span>Point at a card and pull it down</span></li>
-          <li><b>📸</b><span>Smile for the camera</span></li>
+          <li><b>01</b><span>Stand in the frame</span></li>
+          <li><b>02</b><span>Choose a category</span></li>
+          <li><b>03</b><span>Point at a card and pull it down</span></li>
+          <li><b>04</b><span>Smile for the camera</span></li>
         </ol>
-        <button id="startBtn" class="btn primary start" disabled>▶ Start</button>
-        <button id="homeClassicBtn" class="btn ghost small" disabled>🃏 Classic mode (no hand tracking)</button>
       </div>
-      <a href="/setup.html" class="setup-link" title="Booth setup: AI and API key">⚙️ Setup</a>
+      <a href="/setup.html" class="setup-link" title="Booth setup: AI and API key">Setup</a>
     </section>
 
     <!-- AR: full-screen camera, pick up a card with your hand -->
@@ -44,9 +47,9 @@
         <button id="arCancel" class="btn ar-cancel pointable" hidden>✕ Cancel</button>
         <div id="arCursors"></div>
         <div class="ar-topbar">
-          <button class="btn ghost small home-btn">✕ Home</button>
+          <button class="btn ghost small home-btn">✕&nbsp; Home</button>
           <div id="arTabs" class="ar-tabs" hidden></div>
-          <button id="classicBtn" class="btn ghost small">🃏 Classic mode</button>
+          <button id="classicBtn" class="btn ghost small">Classic mode</button>
         </div>
         <div class="ar-info">
           <div id="arBanner" class="ar-banner"></div>
@@ -58,20 +61,24 @@
     </section>
 
     <!-- Step 1 (classic): choose a card -->
-    <section id="screen-cards" class="screen">
-      <h1>Who will you become?</h1>
+    <section id="screen-cards" class="screen page">
+      <div id="classicGiant" class="giant page-giant" aria-hidden="true"></div>
+      <p class="kicker">Classic mode · No hand tracking</p>
+      <h1>Pick your future.</h1>
       <p class="sub">Pick a career card. Then take a selfie and AI turns you into that person.</p>
       <div id="catTabs" class="cat-tabs"></div>
       <div id="cardGrid" class="card-grid"></div>
       <div class="actions">
-        <button id="surpriseBtn" class="btn ghost">🎲 Surprise me</button>
-        <button id="arModeBtn" class="btn ghost">✋ Back to AR mode</button>
-        <button class="btn ghost home-btn">⌂ Home</button>
+        <button id="surpriseBtn" class="btn ghost">Surprise me</button>
+        <button id="arModeBtn" class="btn ghost">Back to AR mode</button>
+        <button class="btn ghost home-btn">Home</button>
       </div>
     </section>
 
     <!-- Step 2: camera -->
-    <section id="screen-camera" class="screen">
+    <section id="screen-camera" class="screen page">
+      <div class="giant page-giant occ-giant" aria-hidden="true"></div>
+      <p class="kicker">Classic mode · Your photo</p>
       <h2>Strike a pose, future <span class="occ-name"></span>!</h2>
       <p class="sub">Face the camera with good lighting. Your face should be clear and centred.</p>
       <div class="camera-wrap">
@@ -82,46 +89,55 @@
       </div>
       <div class="actions">
         <button id="backBtn" class="btn ghost">← Change card</button>
-        <button id="captureBtn" class="btn primary">📸 Take photo</button>
-        <button id="retakeBtn" class="btn ghost" hidden>↺ Retake</button>
-        <button id="transformBtn" class="btn primary" hidden>✨ Transform me</button>
+        <button id="captureBtn" class="btn primary">Take photo <span class="arrow" aria-hidden="true">→</span></button>
+        <button id="retakeBtn" class="btn ghost" hidden>Retake</button>
+        <button id="transformBtn" class="btn primary" hidden>Transform me <span class="arrow" aria-hidden="true">→</span></button>
         <label class="btn ghost upload">
-          ⬆ Upload photo
+          Upload photo
           <input id="fileInput" type="file" accept="image/*" hidden />
         </label>
       </div>
     </section>
 
     <!-- Step 3: generating -->
-    <section id="screen-loading" class="screen">
-      <div class="loader-card">
-        <div class="big-emoji occ-emoji"></div>
-        <div class="spinner"></div>
+    <section id="screen-loading" class="screen page">
+      <div class="giant loading-giant occ-giant" aria-hidden="true"></div>
+      <div class="loading-text">
+        <p class="kicker">Almost there · Future <span class="occ-name"></span></p>
         <h2 id="loadingText">Transforming you…</h2>
         <p class="sub">This usually takes 10–30 seconds.</p>
+        <div class="progress" aria-hidden="true"><span></span></div>
+      </div>
+      <div class="runner">
+        <canvas id="mascotCanvas" aria-label="Pixel graduate running while your photo is made"></canvas>
+        <p class="runner-hint">Tap or press Space to jump</p>
       </div>
     </section>
 
     <!-- Step 4: result -->
-    <section id="screen-result" class="screen">
-      <h2>Meet the future <span class="occ-name"></span>!</h2>
+    <section id="screen-result" class="screen page">
+      <div class="giant result-giant" aria-hidden="true">future</div>
       <div class="result-layout">
         <div class="result-wrap">
           <canvas id="resultCanvas"></canvas>
         </div>
-        <div id="qrPanel" class="qr-panel">
-          <div id="qrCode" class="qr-code"><div class="spinner"></div></div>
-          <div class="qr-text">
-            <div class="qr-title">📱 Scan to download</div>
-            <p id="qrNote" class="qr-note">Preparing your link…</p>
+        <div class="result-side">
+          <p class="kicker">Your photo is ready</p>
+          <h2>Meet the future <span class="occ-name"></span>.</h2>
+          <div id="qrPanel" class="qr-panel">
+            <div id="qrCode" class="qr-code"><div class="spinner"></div></div>
+            <div class="qr-text">
+              <div class="qr-title">Scan to download</div>
+              <p id="qrNote" class="qr-note">Preparing your link…</p>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="downloadBtn" class="btn primary">Download photo</button>
+            <button id="downloadRawBtn" class="btn ghost">Without frame</button>
+            <button id="againBtn" class="btn soft">Try another career</button>
+            <button id="nextPlayerBtn" class="btn soft">Next player</button>
           </div>
         </div>
-      </div>
-      <div class="actions">
-        <button id="downloadBtn" class="btn primary">⬇ Download photo</button>
-        <button id="downloadRawBtn" class="btn ghost">⬇ Without frame</button>
-        <button id="againBtn" class="btn ghost">↺ Try another career</button>
-        <button id="nextPlayerBtn" class="btn ghost">👋 Next player</button>
       </div>
     </section>
   </main>

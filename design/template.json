@@ -1,38 +1,135 @@
 {
   "brandName": "Career Transformation",
-
   "colors": {
     "primary": "#FDD00D",
     "secondary": "#202959",
     "light": "#FFFFFF",
     "dark": "#000000"
   },
-  "font": "\"Segoe UI\", system-ui, -apple-system, sans-serif",
-
+  "font": "\"Inter\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
   "frames": {
     "portrait": {
       "width": 1080,
       "height": 1920,
-      "photo": { "x": 60, "y": 180, "w": 960, "h": 1360, "radius": 28, "borderColor": "primary", "borderWidth": 10 },
-      "logo": { "x": 290, "y": 35, "w": 500, "h": 120 },
+      "photo": {
+        "x": 60,
+        "y": 150,
+        "w": 960,
+        "h": 1290,
+        "radius": 24,
+        "borderWidth": 0
+      },
+      "logo": {
+        "x": 60,
+        "y": 50,
+        "w": 420,
+        "h": 90
+      },
       "texts": [
-        { "text": "{brand}", "x": 540, "y": 100, "size": 52, "weight": 800, "color": "primary", "onlyWithoutLogo": true },
-        { "text": "FUTURE", "x": 540, "y": 1655, "size": 56, "weight": 700, "color": "secondary" },
-        { "text": "{CAREER}", "x": 540, "y": 1750, "size": 110, "weight": 900, "color": "secondary", "maxWidth": 980 },
-        { "text": "{date}", "x": 540, "y": 1855, "size": 34, "weight": 600, "color": "secondary" }
+        {
+          "text": "{brand}",
+          "x": 60,
+          "y": 96,
+          "size": 30,
+          "weight": 700,
+          "color": "secondary",
+          "align": "left",
+          "onlyWithoutLogo": true,
+          "maxWidth": 700
+        },
+        {
+          "text": "{date}",
+          "x": 1020,
+          "y": 96,
+          "size": 28,
+          "weight": 400,
+          "color": "secondary",
+          "align": "right"
+        },
+        {
+          "text": "FUTURE",
+          "x": 60,
+          "y": 1502,
+          "size": 40,
+          "weight": 300,
+          "color": "secondary",
+          "align": "left",
+          "letterSpacing": "6px"
+        },
+        {
+          "text": "{career}",
+          "x": 56,
+          "y": 1600,
+          "size": 120,
+          "weight": 800,
+          "color": "secondary",
+          "align": "left",
+          "maxWidth": 960,
+          "letterSpacing": "-3px"
+        }
       ]
     },
     "landscape": {
       "width": 1920,
       "height": 1080,
-      "photo": { "x": 60, "y": 60, "w": 1200, "h": 960, "radius": 28, "borderColor": "primary", "borderWidth": 10 },
-      "logo": { "x": 1400, "y": 70, "w": 440, "h": 150 },
+      "photo": {
+        "x": 60,
+        "y": 60,
+        "w": 1200,
+        "h": 960,
+        "radius": 24,
+        "borderWidth": 0
+      },
+      "logo": {
+        "x": 1330,
+        "y": 60,
+        "w": 540,
+        "h": 110
+      },
       "texts": [
-        { "text": "{brand}", "x": 1620, "y": 150, "size": 46, "weight": 800, "color": "secondary", "onlyWithoutLogo": true, "maxWidth": 540 },
-        { "text": "{emoji}", "x": 1620, "y": 360, "size": 150 },
-        { "text": "FUTURE", "x": 1620, "y": 520, "size": 60, "weight": 700, "color": "secondary" },
-        { "text": "{CAREER}", "x": 1620, "y": 615, "size": 92, "weight": 900, "color": "secondary", "maxWidth": 540, "wrap": true },
-        { "text": "{date}", "x": 1620, "y": 985, "size": 32, "weight": 600, "color": "secondary" }
+        {
+          "text": "{brand}",
+          "x": 1330,
+          "y": 118,
+          "size": 34,
+          "weight": 700,
+          "color": "secondary",
+          "align": "left",
+          "onlyWithoutLogo": true,
+          "maxWidth": 540
+        },
+        {
+          "text": "FUTURE",
+          "x": 1330,
+          "y": 466,
+          "size": 44,
+          "weight": 300,
+          "color": "secondary",
+          "align": "left",
+          "letterSpacing": "6px"
+        },
+        {
+          "text": "{career}",
+          "x": 1326,
+          "y": 552,
+          "size": 92,
+          "weight": 800,
+          "color": "secondary",
+          "align": "left",
+          "maxWidth": 560,
+          "wrap": true,
+          "lineHeight": 0.98,
+          "letterSpacing": "-2px"
+        },
+        {
+          "text": "{date}",
+          "x": 1330,
+          "y": 985,
+          "size": 28,
+          "weight": 400,
+          "color": "secondary",
+          "align": "left"
+        }
       ]
     }
   }

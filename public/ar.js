@@ -129,11 +129,12 @@ function buildCategoryUI() {
   tabsEl.append(button('ar-tab back', '← Categories', showCategories));
   for (const cat of categories) {
     const n = occupations.filter((o) => o.category === cat.id).length;
-    const tile = button('ar-cat', `<span class="emoji">${cat.emoji}</span><span class="title">${cat.title}</span><span class="count">${n} careers</span>`, () => openCategory(cat.id));
+    const num = String(categories.indexOf(cat) + 1).padStart(2, '0');
+    const tile = button('ar-cat', `<span class="num">${num}</span><span class="count">${n} careers</span><span class="title">${cat.title}</span><span class="giant">${cat.title.toLowerCase()}</span>`, () => openCategory(cat.id));
     tile.style.setProperty('--c', cat.color || 'var(--secondary)');
     tile.dataset.title = cat.title;
     catsEl.append(tile);
-    const tab = button('ar-tab', `${cat.emoji} ${cat.title}`, () => openCategory(cat.id));
+    const tab = button('ar-tab', cat.title, () => openCategory(cat.id));
     tab.dataset.cat = cat.id; tab.dataset.title = cat.title;
     tabsEl.append(tab);
   }

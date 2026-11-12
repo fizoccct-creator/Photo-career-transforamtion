@@ -9,11 +9,11 @@
     .setup { max-width: 620px; margin: 0 auto; padding: 32px 20px 60px; text-align: left; }
     .setup h1 { margin: 0 0 6px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
     .setup .sub { color: var(--muted); margin: 0 0 24px; }
-    .panel { background: var(--panel); border: 1px solid color-mix(in srgb, var(--light) 14%, transparent); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 18px; }
+    .panel { background: var(--panel); border: 2px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 18px; }
     .panel h2 { margin: 0 0 12px; font-size: 1.1rem; }
     .choices { display: grid; gap: 10px; }
     .choice { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; cursor: pointer;
-      border: 2px solid color-mix(in srgb, var(--light) 16%, transparent); }
+      border: 2px solid var(--line); }
     .choice:has(input:checked) { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
     .choice input { margin-top: 4px; accent-color: var(--primary); }
     .choice b { display: block; }
@@ -21,11 +21,11 @@
     label.field { display: block; font-weight: 700; margin: 14px 0 6px; }
     .row { display: flex; gap: 8px; }
     input[type=password], input[type=text] { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; font-size: 1rem;
-      border: 1px solid color-mix(in srgb, var(--light) 25%, transparent); background: color-mix(in srgb, var(--dark) 35%, transparent); color: var(--light); }
+      border: 2px solid var(--line); background: var(--paper); color: var(--ink); font-family: inherit; }
     input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
     .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 0; }
-    .hint a { color: var(--primary); }
-    .saved { color: #4ade80; }
+    .hint a { color: var(--ink); font-weight: 600; }
+    .saved { color: #15803d; }
     details summary { cursor: pointer; color: var(--muted); margin-top: 14px; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
     .msg { margin: 14px 0 0; padding: 12px 14px; border-radius: 10px; font-weight: 600; }

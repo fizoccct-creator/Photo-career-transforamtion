@@ -61,6 +61,7 @@ function drawText(ctx, t, item, vars) {
   if (!text.trim()) return;
   ctx.fillStyle = colorOf(t, item.color);
   ctx.textAlign = item.align || 'center';
+  ctx.letterSpacing = item.letterSpacing || '0px'; // e.g. "6px"; ignored by browsers without canvas letter spacing
   ctx.textBaseline = 'middle';
   const size = item.size || 48;
   ctx.font = `${item.weight || 700} ${size}px ${item.font || t.font || 'sans-serif'}`;
@@ -120,6 +121,11 @@ export async function renderFrame(canvas, photoSrc, occ, orientation, t) {
   const f = t.frames?.[orientation] || t.frames?.portrait;
   canvas.width = f.width; canvas.height = f.height;
   const ctx = canvas.getContext('2d');
+  // Make sure the web font is ready, or the first photo is drawn in a fallback font.
+  if (document.fonts?.load) {
+    const family = (t.font || 'sans-serif').split(',')[0];
+    await Promise.all([300, 400, 700, 800].map((w) => document.fonts.load(`${w} 48px ${family}`))).catch(() => {});
+  }
   const [bg, photo, overlay, logo] = await Promise.all([
     loadImage(brandPath(f.background)), photoSrc ? loadImage(photoSrc) : null,
     loadImage(brandPath(f.overlay)), loadImage(brandPath(t.logo)),

@@ -1,6 +1,8 @@
 import { startAR, stopAR, preloadHands } from './ar.js';
 import { toCroppedDataUrl, getOrientation, ratioFor } from './util.js';
 import { loadTemplate, applyTheme, renderFrame } from './frame.js';
+import { transitionTo, initButtonMotion } from './motion.js';
+import { startMascot, stopMascot } from './mascot.js';
 
 const $ = (s) => document.querySelector(s);
 const state = { occupations: [], categories: [], category: null, selected: null, photo: null, result: null, stream: null, mode: 'ar', orientation: 'portrait', template: null };
@@ -15,13 +17,18 @@ function setCreditOut(out, provider) {
 
 // ---------- Screens ----------
 function show(name) {
+  if (name === document.body.dataset.screen) return swapScreen(name);
+  transitionTo(name, swapScreen);
+}
+
+function swapScreen(name) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${name}`));
   document.body.dataset.screen = name;
   if (name === 'camera') startCamera(); else stopCamera();
   if (name === 'ar') { state.mode = 'ar'; startAR(state.occupations, state.categories, onARCaptured); }
   else if (name !== 'loading' && name !== 'result') stopAR();
   if (name === 'cards') state.mode = 'classic';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0 });
 }
 
 function toast(msg, ms = 6000) {
@@ -47,10 +54,12 @@ function buildClassicTabs() {
   const bar = $('#catTabs');
   bar.innerHTML = '';
   bar.hidden = !state.categories.length;
+  const active = state.categories.find((c) => c.id === state.category);
+  $('#classicGiant').textContent = (active?.title || 'careers').toLowerCase();
   for (const cat of state.categories) {
     const b = document.createElement('button');
     b.className = 'btn ghost cat-tab' + (cat.id === state.category ? ' active' : '');
-    b.textContent = `${cat.emoji} ${cat.title}`;
+    b.textContent = cat.title;
     b.addEventListener('click', () => { state.category = cat.id; buildClassicTabs(); buildClassicCards(); });
     bar.appendChild(b);
   }
@@ -78,12 +87,19 @@ function buildClassicCards() {
   }
 }
 
+// Fill every place on the page that shows the chosen career (name, icon, card, giant word).
+function showOccupation(occ) {
+  document.querySelectorAll('.occ-name').forEach((e) => (e.textContent = occ.title));
+  document.querySelectorAll('.occ-emoji').forEach((e) => (e.textContent = occ.cardImage ? '' : occ.emoji));
+  document.querySelectorAll('.occ-giant').forEach((e) => (e.textContent = occ.title.split(' ')[0].toLowerCase()));
+  document.querySelectorAll('.occ-card').forEach((e) => { e.hidden = !occ.cardImage; if (occ.cardImage) e.src = occ.cardImage; });
+}
+
 function chooseOccupation(occ, cardEl) {
   state.selected = occ;
   document.querySelectorAll('.card').forEach((c) => c.classList.remove('selected'));
   cardEl?.classList.add('selected', 'flipped');
-  document.querySelectorAll('.occ-name').forEach((e) => (e.textContent = occ.title));
-  document.querySelectorAll('.occ-emoji').forEach((e) => (e.textContent = occ.emoji));
+  showOccupation(occ);
   setTimeout(() => show('camera'), cardEl ? 500 : 0);
 }
 
@@ -176,14 +192,14 @@ function onARCaptured(occ, photo, orientation) {
   state.selected = occ;
   state.photo = photo;
   state.orientation = orientation;
-  document.querySelectorAll('.occ-name').forEach((e) => (e.textContent = occ.title));
-  document.querySelectorAll('.occ-emoji').forEach((e) => (e.textContent = occ.emoji));
+  showOccupation(occ);
   stopAR();
   transform();
 }
 
 async function transform() {
   show('loading');
+  setTimeout(() => { if (document.body.dataset.screen === 'loading') startMascot($('#mascotCanvas')); }, 400); // after the wipe
   let li = 0;
   $('#loadingText').textContent = 'Transforming you…';
   const rotate = setInterval(() => ($('#loadingText').textContent = loadingLines[li++ % loadingLines.length]), 3000);
@@ -207,6 +223,7 @@ async function transform() {
     show(state.mode === 'ar' ? 'ar' : 'camera');
   } finally {
     clearInterval(rotate);
+    stopMascot();
   }
 }
 
@@ -263,6 +280,15 @@ $('#againBtn').addEventListener('click', () => { shareToken++; resetCards(); sho
 $('#nextPlayerBtn').addEventListener('click', () => { shareToken++; resetCards(); show('home'); });
 
 // ---------- Home ----------
+// A small fan of career cards beside the title, plus the career and category counts.
+function buildHome() {
+  const n = state.occupations.length, c = state.categories.length;
+  $('#homeKicker').textContent = `${n} careers · ${c ? `${c} categories · ` : ''}1 photo`;
+  const pick = ['doctor', 'pilot', 'astronaut'].map((id) => state.occupations.find((o) => o.id === id))
+    .filter((o) => o?.cardImage);
+  const fan = pick.length === 3 ? pick : state.occupations.filter((o) => o.cardImage).slice(0, 3);
+  $('#homeCards').innerHTML = fan.map((o) => `<img src="${o.cardImage}" alt="" draggable="false">`).join('');
+}
 async function goFullscreen() {
   try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); } catch { /* not allowed: fine */ }
 }
@@ -274,6 +300,7 @@ $('#classicBtn').addEventListener('click', () => show('cards'));
 $('#arModeBtn').addEventListener('click', () => show('ar'));
 $('#backBtn').addEventListener('click', () => show('cards'));
 
+initButtonMotion();
 show('home');
 preloadHands();
 // Load careers + your design folder, then attach your card artwork (design/cards/<id>.png).
@@ -285,6 +312,7 @@ Promise.all([loadOccupations(), loadTemplate()])
     state.category = state.categories[0]?.id || null;
     buildClassicTabs();
     buildClassicCards();
+    buildHome();
     $('#startBtn').disabled = false; $('#homeClassicBtn').disabled = false;
   })
   .catch((e) => toast(`Could not start: ${e.message}`));
