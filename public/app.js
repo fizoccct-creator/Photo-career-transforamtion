@@ -1,6 +1,8 @@
 import { startAR, stopAR, preloadHands } from './ar.js';
 import { toCroppedDataUrl, getOrientation, ratioFor } from './util.js';
 import { loadTemplate, applyTheme, renderFrame } from './frame.js';
+import { transitionTo, initButtonMotion } from './motion.js';
+import { startMascot, stopMascot } from './mascot.js';
 
 const $ = (s) => document.querySelector(s);
 const state = { occupations: [], categories: [], category: null, selected: null, photo: null, result: null, stream: null, mode: 'ar', orientation: 'portrait', template: null };
@@ -15,13 +17,18 @@ function setCreditOut(out, provider) {
 
 // ---------- Screens ----------
 function show(name) {
+  if (name === document.body.dataset.screen) return swapScreen(name);
+  transitionTo(name, swapScreen);
+}
+
+function swapScreen(name) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === `screen-${name}`));
   document.body.dataset.screen = name;
   if (name === 'camera') startCamera(); else stopCamera();
   if (name === 'ar') { state.mode = 'ar'; startAR(state.occupations, state.categories, onARCaptured); }
   else if (name !== 'loading' && name !== 'result') stopAR();
   if (name === 'cards') state.mode = 'classic';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0 });
 }
 
 function toast(msg, ms = 6000) {
@@ -192,6 +199,7 @@ function onARCaptured(occ, photo, orientation) {
 
 async function transform() {
   show('loading');
+  setTimeout(() => { if (document.body.dataset.screen === 'loading') startMascot($('#mascotCanvas')); }, 400); // after the wipe
   let li = 0;
   $('#loadingText').textContent = 'Transforming you…';
   const rotate = setInterval(() => ($('#loadingText').textContent = loadingLines[li++ % loadingLines.length]), 3000);
@@ -215,6 +223,7 @@ async function transform() {
     show(state.mode === 'ar' ? 'ar' : 'camera');
   } finally {
     clearInterval(rotate);
+    stopMascot();
   }
 }
 
@@ -291,6 +300,7 @@ $('#classicBtn').addEventListener('click', () => show('cards'));
 $('#arModeBtn').addEventListener('click', () => show('ar'));
 $('#backBtn').addEventListener('click', () => show('cards'));
 
+initButtonMotion();
 show('home');
 preloadHands();
 // Load careers + your design folder, then attach your card artwork (design/cards/<id>.png).

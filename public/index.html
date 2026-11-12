@@ -102,14 +102,15 @@
     <!-- Step 3: generating -->
     <section id="screen-loading" class="screen page">
       <div class="giant loading-giant occ-giant" aria-hidden="true"></div>
-      <div class="loading-layout">
-        <div class="loading-card"><img class="occ-card" alt="" hidden /><div class="big-emoji occ-emoji"></div></div>
-        <div class="loading-text">
-          <p class="kicker">Almost there · Your future self</p>
-          <h2 id="loadingText">Transforming you…</h2>
-          <p class="sub">This usually takes 10–30 seconds.</p>
-          <div class="progress" aria-hidden="true"><span></span></div>
-        </div>
+      <div class="loading-text">
+        <p class="kicker">Almost there · Future <span class="occ-name"></span></p>
+        <h2 id="loadingText">Transforming you…</h2>
+        <p class="sub">This usually takes 10–30 seconds.</p>
+        <div class="progress" aria-hidden="true"><span></span></div>
+      </div>
+      <div class="runner">
+        <canvas id="mascotCanvas" aria-label="Pixel graduate running while your photo is made"></canvas>
+        <p class="runner-hint">Tap or press Space to jump</p>
       </div>
     </section>
 
