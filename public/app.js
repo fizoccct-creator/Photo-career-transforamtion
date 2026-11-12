@@ -47,10 +47,12 @@ function buildClassicTabs() {
   const bar = $('#catTabs');
   bar.innerHTML = '';
   bar.hidden = !state.categories.length;
+  const active = state.categories.find((c) => c.id === state.category);
+  $('#classicGiant').textContent = (active?.title || 'careers').toLowerCase();
   for (const cat of state.categories) {
     const b = document.createElement('button');
     b.className = 'btn ghost cat-tab' + (cat.id === state.category ? ' active' : '');
-    b.textContent = `${cat.emoji} ${cat.title}`;
+    b.textContent = cat.title;
     b.addEventListener('click', () => { state.category = cat.id; buildClassicTabs(); buildClassicCards(); });
     bar.appendChild(b);
   }
@@ -78,12 +80,19 @@ function buildClassicCards() {
   }
 }
 
+// Fill every place on the page that shows the chosen career (name, icon, card, giant word).
+function showOccupation(occ) {
+  document.querySelectorAll('.occ-name').forEach((e) => (e.textContent = occ.title));
+  document.querySelectorAll('.occ-emoji').forEach((e) => (e.textContent = occ.cardImage ? '' : occ.emoji));
+  document.querySelectorAll('.occ-giant').forEach((e) => (e.textContent = occ.title.split(' ')[0].toLowerCase()));
+  document.querySelectorAll('.occ-card').forEach((e) => { e.hidden = !occ.cardImage; if (occ.cardImage) e.src = occ.cardImage; });
+}
+
 function chooseOccupation(occ, cardEl) {
   state.selected = occ;
   document.querySelectorAll('.card').forEach((c) => c.classList.remove('selected'));
   cardEl?.classList.add('selected', 'flipped');
-  document.querySelectorAll('.occ-name').forEach((e) => (e.textContent = occ.title));
-  document.querySelectorAll('.occ-emoji').forEach((e) => (e.textContent = occ.emoji));
+  showOccupation(occ);
   setTimeout(() => show('camera'), cardEl ? 500 : 0);
 }
 
@@ -176,8 +185,7 @@ function onARCaptured(occ, photo, orientation) {
   state.selected = occ;
   state.photo = photo;
   state.orientation = orientation;
-  document.querySelectorAll('.occ-name').forEach((e) => (e.textContent = occ.title));
-  document.querySelectorAll('.occ-emoji').forEach((e) => (e.textContent = occ.emoji));
+  showOccupation(occ);
   stopAR();
   transform();
 }
@@ -263,6 +271,15 @@ $('#againBtn').addEventListener('click', () => { shareToken++; resetCards(); sho
 $('#nextPlayerBtn').addEventListener('click', () => { shareToken++; resetCards(); show('home'); });
 
 // ---------- Home ----------
+// A small fan of career cards beside the title, plus the career and category counts.
+function buildHome() {
+  const n = state.occupations.length, c = state.categories.length;
+  $('#homeKicker').textContent = `${n} careers · ${c ? `${c} categories · ` : ''}1 photo`;
+  const pick = ['doctor', 'pilot', 'astronaut'].map((id) => state.occupations.find((o) => o.id === id))
+    .filter((o) => o?.cardImage);
+  const fan = pick.length === 3 ? pick : state.occupations.filter((o) => o.cardImage).slice(0, 3);
+  $('#homeCards').innerHTML = fan.map((o) => `<img src="${o.cardImage}" alt="" draggable="false">`).join('');
+}
 async function goFullscreen() {
   try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); } catch { /* not allowed: fine */ }
 }
@@ -285,6 +302,7 @@ Promise.all([loadOccupations(), loadTemplate()])
     state.category = state.categories[0]?.id || null;
     buildClassicTabs();
     buildClassicCards();
+    buildHome();
     $('#startBtn').disabled = false; $('#homeClassicBtn').disabled = false;
   })
   .catch((e) => toast(`Could not start: ${e.message}`));
